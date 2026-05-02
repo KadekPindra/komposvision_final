@@ -69,6 +69,7 @@ export default function ScanScreen() {
         style={{ flex: 1 }}
         facing="back"
         ratio="16:9"
+        selectedLens=""
         flash={flash}
       />
 
