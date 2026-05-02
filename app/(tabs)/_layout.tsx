@@ -1,8 +1,8 @@
 import { HapticTab } from "@/components/haptic-tab";
-import { Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 export default function TabLayout() {
   return (
@@ -111,12 +111,12 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="profile"
+        name="materials-guide"
         options={{
-          title: "Profile",
+          title: "Panduan",
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name="person"
+            <AntDesign
+              name="info-circle"
               size={24}
               color={focused ? "#16a34a" : "gray"}
             />
