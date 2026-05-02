@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 
 export default function ChatScreen() {
   return (
-    <ScreenWrapper className="flex-1 bg-white">
+    <ScreenWrapper>
       <View className="flex-1 items-center justify-center">
         <Text>Chat Screen</Text>
       </View>
