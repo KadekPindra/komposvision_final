@@ -3,14 +3,26 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { analyzeGarbage } from "@/services/aiService";
+import { uploadGarbageImage } from "@/utils/supabase";
+
+const DEV_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
   const router = useRouter();
   const [flash, setFlash] = useState<"off" | "on">("off");
+  const [loading, setLoading] = useState(false);
 
   if (!permission) return <View />;
 
@@ -31,20 +43,37 @@ export default function ScanScreen() {
     );
   }
 
+  const processImage = async (localUri: string) => {
+    setLoading(true);
+    try {
+      // 1. Upload image to Supabase Storage
+      const publicUrl = await uploadGarbageImage(localUri, DEV_USER_ID);
+
+      // 2. Call AI analysis API
+      const result = await analyzeGarbage(publicUrl, DEV_USER_ID);
+
+      // 3. Navigate to result with full ScanResponse
+      router.push({
+        pathname: "/result",
+        params: { data: JSON.stringify(result) },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Terjadi kesalahan";
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const takePhoto = async () => {
     if (!cameraRef.current) return;
-
     const photo = await cameraRef.current.takePictureAsync();
-
-    router.push({
-      pathname: "/result",
-      params: { image: photo.uri },
-    });
+    await processImage(photo.uri);
   };
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
     if (!permission.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -53,12 +82,7 @@ export default function ScanScreen() {
     });
 
     if (!result.canceled) {
-      const uri = result.assets[0].uri;
-
-      router.push({
-        pathname: "/result",
-        params: { image: uri },
-      });
+      await processImage(result.assets[0].uri);
     }
   };
 
@@ -71,6 +95,24 @@ export default function ScanScreen() {
         ratio="16:9"
         flash={flash}
       />
+
+      {/* Loading Overlay */}
+      {loading && (
+        <View
+          className="absolute inset-0 items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+        >
+          <View className="bg-white rounded-2xl p-6 items-center">
+            <ActivityIndicator size="large" color="#16a34a" />
+            <Text className="text-gray-700 font-semibold mt-3">
+              Menganalisis gambar...
+            </Text>
+            <Text className="text-gray-400 text-sm mt-1">
+              Mohon tunggu sebentar
+            </Text>
+          </View>
+        </View>
+      )}
 
       <SafeAreaView className="absolute inset-0 justify-between px-6">
         <View className="flex-row items-center justify-between">
@@ -108,11 +150,13 @@ export default function ScanScreen() {
               <View className="self-start">
                 <TouchableOpacity
                   onPress={pickImage}
+                  disabled={loading}
                   style={{
                     backgroundColor: "rgba(0,0,0,0.4)",
                     padding: 12,
                     borderRadius: 999,
                     alignSelf: "flex-start",
+                    opacity: loading ? 0.5 : 1,
                   }}
                   activeOpacity={0.7}
                 >
@@ -125,9 +169,11 @@ export default function ScanScreen() {
             <View className="items-center">
               <TouchableOpacity
                 onPress={takePhoto}
+                disabled={loading}
                 style={{
                   borderColor: "rgb(117, 111, 108)",
                   backgroundColor: "rgba(0,0,0,0.4)",
+                  opacity: loading ? 0.5 : 1,
                 }}
                 className="w-20 h-20 rounded-full items-center justify-center border-2"
               >
