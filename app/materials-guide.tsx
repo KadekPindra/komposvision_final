@@ -1,10 +1,10 @@
-import PageHeader from "@/components/PageHeader";
+import AppHeader from "@/components/AppHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import { compostMaterials } from "@/services/materialsGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router, useSegments } from "expo-router";
+import { useSegments } from "expo-router";
 import { useMemo, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
 type TabKey = "carbon" | "nitrogen";
 
@@ -88,16 +88,16 @@ export default function MaterialsGuideScreen() {
       : compostMaterials.nitrogen;
   }, [activeTab]);
 
-  const header = (
-    <PageHeader
-      title="Panduan Bahan"
-      onBack={isInTabs ? undefined : () => router.back()}
-      className="py-4 mb-4"
-    />
-  );
-
   return (
-    <ScreenWrapper header={header}>
+    <ScreenWrapper>
+      <AppHeader
+        rightSlot={
+          <Image
+            source={{ uri: "https://i.pravatar.cc/100" }}
+            className="w-10 h-10 rounded-full"
+          />
+        }
+      />
       <View className="flex-1">
         <View className="flex-row items-center gap-3 mb-8">
           {tabs.map((tab) => {
