@@ -14,7 +14,10 @@ export default function ScreenWrapper({
   scrollRef,
 }: ScreenWrapperProps) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fcf7f9" }}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={{ flex: 1, backgroundColor: "#fcf7f9" }}
+    >
       {header ? <View style={{ zIndex: 10 }}>{header}</View> : null}
       <ScrollView ref={scrollRef} className="px-8">
         <StatusBar barStyle="dark-content" />
