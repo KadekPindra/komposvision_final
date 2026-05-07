@@ -1,4 +1,3 @@
-import AppHeader from "@/components/AppHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import { sendChatMessage } from "@/services/aiService";
 import { Ionicons } from "@expo/vector-icons";
@@ -80,9 +79,7 @@ export default function ChatScreen() {
     const isUser = item.sender === "user";
 
     return (
-      <View
-        className={`mb-3 px-1 ${isUser ? "items-end" : "items-start"}`}
-      >
+      <View className={`mb-3 px-1 ${isUser ? "items-end" : "items-start"}`}>
         <View
           className={`rounded-2xl px-4 py-3 max-w-[80%] ${
             isUser ? "bg-green-600" : "bg-gray-100"
@@ -106,7 +103,7 @@ export default function ChatScreen() {
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper scrollable={false}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
