@@ -1,14 +1,10 @@
 import PageHeader from "@/components/PageHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
-import {
-  getCompostItem,
-  subscribeCompostProgress,
-  updateCompostProgress,
-} from "@/services/compostProgressStore";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Image,
   Modal,
   Text,
@@ -16,6 +12,85 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+type CompostItemResponse = {
+  id: string;
+  image_url?: string | null;
+  date: string;
+  current_ratio: string;
+  name: string;
+  status: string;
+  progress: number;
+  summary?: string | null;
+  temperature_c: number;
+  moisture: "Rendah" | "Sedang" | "Tinggi";
+  next_action?: string | null;
+  eta_days: number;
+  composition: {
+    label: string;
+    detail: string;
+    percent: number;
+    tone: "green" | "brown";
+  }[];
+  activities: {
+    title: string;
+    time: string;
+    description: string;
+    is_active: boolean;
+  }[];
+};
+
+type CompostItem = {
+  id: string;
+  image: string;
+  date: string;
+  ratio: string;
+  title: string;
+  status: string;
+  progress: number;
+  summary: string;
+  temperatureC: number;
+  moisture: "Rendah" | "Sedang" | "Tinggi";
+  nextAction: string;
+  etaDays: number;
+  composition: {
+    label: string;
+    detail: string;
+    percent: number;
+    tone: "green" | "brown";
+  }[];
+  activities: {
+    title: string;
+    time: string;
+    description: string;
+    isActive: boolean;
+  }[];
+};
+
+const DEV_USER_ID = "0f76a64a-d37e-4f69-af95-f32002ec1390";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+const mapCompostItem = (item: CompostItemResponse): CompostItem => ({
+  id: item.id,
+  image: item.image_url ?? "",
+  date: item.date,
+  ratio: item.current_ratio,
+  title: item.name,
+  status: item.status,
+  progress: item.progress,
+  summary: item.summary ?? "",
+  temperatureC: item.temperature_c,
+  moisture: item.moisture,
+  nextAction: item.next_action ?? "",
+  etaDays: item.eta_days,
+  composition: item.composition,
+  activities: item.activities.map((activity) => ({
+    title: activity.title,
+    time: activity.time,
+    description: activity.description,
+    isActive: activity.is_active,
+  })),
+});
 
 type ProgressBarProps = {
   progress: number;
@@ -62,24 +137,32 @@ const TimelineDot: React.FC<TimelineDotProps> = ({ isActive, isLast }) => (
 
 const DetailProgressScreen = () => {
   const { id } = useLocalSearchParams();
-  const itemId = useMemo(() => Number(id), [id]);
-  const [item, setItem] = useState(() =>
-    Number.isFinite(itemId) ? getCompostItem(itemId) : undefined,
-  );
+  const itemId = useMemo(() => String(id ?? ""), [id]);
+  const [item, setItem] = useState<CompostItem | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
   const [customDesc, setCustomDesc] = useState("");
   const [customDelta, setCustomDelta] = useState("0");
 
-  useEffect(() => {
-    if (!Number.isFinite(itemId)) return undefined;
-
-    setItem(getCompostItem(itemId));
-
-    return subscribeCompostProgress(() => {
-      setItem(getCompostItem(itemId));
-    });
+  const fetchDetail = useCallback(async () => {
+    if (!API_BASE_URL || !itemId) return;
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/progress/${itemId}?user_id=${DEV_USER_ID}`,
+      );
+      if (!response.ok) return;
+      const data = (await response.json()) as CompostItemResponse;
+      setItem(mapCompostItem(data));
+    } finally {
+      setLoading(false);
+    }
   }, [itemId]);
+
+  useEffect(() => {
+    fetchDetail();
+  }, [fetchDetail]);
 
   const header = (
     <PageHeader title="Detail Progress" onBack={() => router.back()} />
@@ -137,37 +220,78 @@ const DetailProgressScreen = () => {
     },
   ];
 
-  const handleQuickUpdate = (update: (typeof quickUpdates)[number]) => {
-    updateCompostProgress({
-      id: item.id,
-      progressDelta: update.delta,
-      status: update.status,
-      nextAction: update.nextAction,
-      activity: update.activity,
-    });
-    setIsUpdateOpen(false);
+  const handleQuickUpdate = async (update: (typeof quickUpdates)[number]) => {
+    if (!API_BASE_URL || !item) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/progress/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: DEV_USER_ID,
+          progressDelta: update.delta,
+          status: update.status,
+          nextAction: update.nextAction,
+          activity: {
+            title: update.activity.title,
+            time: update.activity.time,
+            description: update.activity.description,
+            isActive: update.activity.isActive,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Gagal memperbarui progress");
+      }
+
+      await fetchDetail();
+      setIsUpdateOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Terjadi kesalahan";
+      Alert.alert("Error", message);
+    }
   };
 
-  const handleCustomUpdate = () => {
+  const handleCustomUpdate = async () => {
+    if (!API_BASE_URL || !item) return;
     const deltaValue = Number(customDelta);
     const activityTitle = customTitle.trim() || "Update manual";
     const activityDesc = customDesc.trim() || "Update progress ditambahkan.";
 
-    updateCompostProgress({
-      id: item.id,
-      progressDelta: Number.isFinite(deltaValue) ? deltaValue : 0,
-      activity: {
-        title: activityTitle,
-        time: "Baru saja",
-        description: activityDesc,
-        isActive: true,
-      },
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/progress/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: DEV_USER_ID,
+          progressDelta: Number.isFinite(deltaValue) ? deltaValue : 0,
+          activity: {
+            title: activityTitle,
+            time: "Baru saja",
+            description: activityDesc,
+            isActive: true,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Gagal memperbarui progress");
+      }
+
+      await fetchDetail();
+      setIsUpdateOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Terjadi kesalahan";
+      Alert.alert("Error", message);
+    }
 
     setCustomTitle("");
     setCustomDesc("");
     setCustomDelta("0");
-    setIsUpdateOpen(false);
   };
 
   return (
