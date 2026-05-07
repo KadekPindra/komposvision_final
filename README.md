@@ -1,50 +1,77 @@
-# Welcome to your Expo app 👋
+# 🍃 KomposVision
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**KomposVision** adalah aplikasi mobile pintar yang membantu Anda memonitor, mengelola, dan mengoptimalkan proses pembuatan kompos di rumah. Dengan memanfaatkan kamera smartphone, KomposVision dapat menganalisis tingkat keseimbangan rasio bahan pada tumpukan kompos Anda dan memberikan rekomendasi praktis.
 
-## Get started
+---
 
-1. Install dependencies
+## ✨ Fitur Utama
 
+- 📸 **Pemindai Cerdas (Smart Scan)**: Ambil foto kompos Anda secara langsung atau pilih dari galeri ponsel. Aplikasi akan menyimulasikan pemrosesan gambar untuk menganalisis rasio Karbon dan Nitrogen.
+- 📊 **Dasbor Kesehatan Kompos**: Pantau metrik kemajuan penguraian kompos, jumlah sampah yang terurai, serta kumpulkan Poin Eco (Eco Points).
+- 💡 **Rekomendasi & Tips Otomatis**: Dapatkan saran real-time untuk menjaga kualitas kompos (misal: perlu tambahan bahan "Hijau/Nitrogen" atau bahan "Coklat/Karbon").
+- 🕒 **Riwayat Aktivitas**: Lacak riwayat penambahan material organik secara historis.
+
+## 🛠️ Teknologi yang Digunakan
+
+Proyek ini dibangun menggunakan *tech stack* mobile modern:
+- **[React Native](https://reactnative.dev/)** - Framework pengembangan aplikasi mobile cross-platform.
+- **[Expo](https://expo.dev/)** - Toolchain dan platform development (menggunakan Expo SDK 54).
+- **[Expo Router](https://docs.expo.dev/router/introduction/)** - File-based routing navigation.
+- **[NativeWind](https://www.nativewind.dev/) (Tailwind CSS v3)** - Styling untuk mengimplementasikan antarmuka modern dengan mudah.
+
+## 🚀 Cara Menjalankan Proyek (Getting Started)
+
+Ikuti langkah-langkah di bawah ini untuk menjalankan proyek di lingkungan pengembangan lokal Anda.
+
+### Persyaratan Sistem
+- Node.js (direkomendasikan versi LTS)
+- npm, yarn, atau pnpm
+- Aplikasi **Expo Go** terinstal di HP Android/iOS Anda (opsional jika menggunakan Emulator/Simulator).
+
+### Langkah-langkah Instalasi
+
+1. **Clone repositori ini**:
+   ```bash
+   git clone https://github.com/KadekPindra/komposvision.git
+   cd komposvision
+   ```
+
+2. **Instal seluruh dependensi**:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. **Jalankan *development server***:
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. **Buka Aplikasi**:
+   - **Perangkat Asli**: Pindai QR Code yang muncul di terminal/browser menggunakan aplikasi **Expo Go** (untuk Android) atau aplikasi **Kamera bawaan** (untuk iOS).
+   - **Emulator/Simulator**: Tekan tombol `a` di terminal untuk membuka di Android Emulator, atau tekan `i` untuk iOS Simulator.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 📁 Struktur Folder
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Berikut adalah gambaran umum dari struktur direktori pada repositori ini:
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+komposvision/
+├── app/               # Folder utama berbasis Expo Router (Layar dan Navigasi)
+│   ├── (tabs)/        # Layar-layar pada Bottom Tab Navigation (Home, Scan, dll)
+│   ├── _layout.tsx    # File konfigurasi navigasi dan layout global
+│   └── result.tsx     # Layar untuk menampilkan hasil analisis foto kompos
+├── assets/            # Kumpulan gambar statis, ikon, dan font
+├── components/        # Komponen UI independen (ScreenWrapper, dll)
+├── constants/         # Variabel statis, tema, dan warna global
+├── hooks/             # Custom React Hooks
+├── scripts/           # Script tambahan pengelolaan proyek
+├── services/          # Kumpulan logika integrasi eksternal atau AI
+└── tailwind.config.js # Konfigurasi *styling* dari NativeWind/Tailwind
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🤝 Kontribusi
 
-## Learn more
+Kontribusi dari komunitas akan sangat dihargai! Jika Anda menemukan *bug* atau ingin menambahkan fitur baru, silakan buka **Issue** baru atau *submit* **Pull Request**.
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+*Dibuat dengan ❤️ untuk lingkungan yang lebih hijau.*
