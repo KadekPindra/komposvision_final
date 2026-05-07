@@ -1,5 +1,5 @@
 export type CompostItem = {
-  id: number;
+  id: string;
   image: string;
   date: string;
   ratio: string;
@@ -27,7 +27,7 @@ export type CompostItem = {
 
 export const compostProgressData: CompostItem[] = [
   {
-    id: 1,
+    id: "1",
     image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=400",
     date: "12 Okt 2023, 08:30",
     ratio: "25:1",
@@ -70,7 +70,7 @@ export const compostProgressData: CompostItem[] = [
     ],
   },
   {
-    id: 2,
+    id: "2",
     image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=400",
     date: "05 Okt 2023, 16:15",
     ratio: "40:1",
@@ -113,7 +113,7 @@ export const compostProgressData: CompostItem[] = [
     ],
   },
   {
-    id: 3,
+    id: "3",
     image: "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400",
     date: "15 Okt 2023, 09:00",
     ratio: "20:1",
@@ -156,5 +156,5 @@ export const compostProgressData: CompostItem[] = [
   },
 ];
 
-export const getCompostItemById = (id: number) =>
+export const getCompostItemById = (id: string) =>
   compostProgressData.find((item) => item.id === id);

@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { analyzeGarbage } from "@/services/aiService";
 import { uploadGarbageImage } from "@/utils/supabase";
 
-const DEV_USER_ID = "00000000-0000-0000-0000-000000000000";
+const DEV_USER_ID = "0f76a64a-d37e-4f69-af95-f32002ec1390";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -23,6 +23,7 @@ export default function ScanScreen() {
   const router = useRouter();
   const [flash, setFlash] = useState<"off" | "on">("off");
   const [loading, setLoading] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   if (!permission) return <View />;
 
@@ -43,16 +44,39 @@ export default function ScanScreen() {
     );
   }
 
+  if (cameraError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-lg font-semibold mb-3 text-center">
+          Kamera gagal dibuka
+        </Text>
+        <Text className="text-sm text-gray-600 text-center">{cameraError}</Text>
+        <TouchableOpacity
+          onPress={() => setCameraError(null)}
+          className="mt-4 bg-green-600 px-6 py-3 rounded-xl"
+        >
+          <Text className="text-white font-semibold">Coba Lagi</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const processImage = async (localUri: string) => {
     setLoading(true);
+    console.log("[Scan] processImage start", { localUri });
     try {
       // 1. Upload image to Supabase Storage
+      console.log("[Scan] uploadGarbageImage start");
       const publicUrl = await uploadGarbageImage(localUri, DEV_USER_ID);
+      console.log("[Scan] uploadGarbageImage success", { publicUrl });
 
       // 2. Call AI analysis API
+      console.log("[Scan] analyzeGarbage start");
       const result = await analyzeGarbage(publicUrl, DEV_USER_ID);
+      console.log("[Scan] analyzeGarbage success", { result });
 
       // 3. Navigate to result with full ScanResponse
+      console.log("[Scan] navigate to result");
       router.push({
         pathname: "/result",
         params: { data: JSON.stringify(result) },
@@ -60,25 +84,37 @@ export default function ScanScreen() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Terjadi kesalahan";
+      console.log("[Scan] processImage error", { message, error });
       Alert.alert("Error", message);
     } finally {
+      console.log("[Scan] processImage end");
       setLoading(false);
     }
   };
 
   const takePhoto = async () => {
     if (!cameraRef.current) return;
+    console.log("[Scan] takePhoto start");
     const photo = await cameraRef.current.takePictureAsync();
+    console.log("[Scan] takePhoto success", { uri: photo?.uri });
     await processImage(photo.uri);
   };
 
   const pickImage = async () => {
+    console.log("[Scan] pickImage start");
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    console.log("[Scan] pickImage permission", {
+      granted: permission.granted,
+    });
     if (!permission.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
+    });
+    console.log("[Scan] pickImage result", {
+      canceled: result.canceled,
+      assetsCount: result.assets?.length ?? 0,
     });
 
     if (!result.canceled) {
@@ -92,9 +128,12 @@ export default function ScanScreen() {
         ref={cameraRef}
         style={{ flex: 1 }}
         facing="back"
-        ratio="16:9"
-        selectedLens=""
         flash={flash}
+        onMountError={(event) => {
+          const message = event?.message ?? "Terjadi kesalahan kamera";
+          console.log("[Scan] CameraView mount error", { message });
+          setCameraError(message);
+        }}
       />
 
       {/* Loading Overlay */}

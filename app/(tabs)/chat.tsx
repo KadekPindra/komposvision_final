@@ -1,173 +1,303 @@
+import AppHeader from "@/components/AppHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import { sendChatMessage } from "@/services/aiService";
+import {
+  getCompostProgress,
+  subscribeCompostProgress,
+} from "@/services/compostProgressStore";
 import { Ionicons } from "@expo/vector-icons";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 
-interface ChatMessage {
+type ChatMessage = {
   id: string;
+  role: "assistant" | "user";
   text: string;
-  sender: "user" | "bot";
-}
+  time: string;
+  sources?: string[];
+};
 
-const DEV_USER_ID = "00000000-0000-0000-0000-000000000000";
+const DEV_USER_ID = "0f76a64a-d37e-4f69-af95-f32002ec1390";
 
 export default function ChatScreen() {
+  const [items, setItems] = useState(getCompostProgress());
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: "welcome",
-      text: "Halo! 👋 Saya asisten kompos AI. Tanyakan apa saja tentang kompos dan pengelolaan sampah organik.",
-      sender: "bot",
+      id: "bot-welcome",
+      role: "assistant",
+      text: "Halo! Aku siap bantu. Pilih sumber progres untuk jadi konteks chat.",
+      time: "",
     },
   ]);
-  const [inputText, setInputText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
+  const chatScrollRef = useRef<ScrollView | null>(null);
+
+  useEffect(() => {
+    return subscribeCompostProgress(() => {
+      const nextItems = getCompostProgress();
+      setItems(nextItems);
+      if (activeSourceId === null && nextItems.length > 0) {
+        setActiveSourceId(nextItems[0].id);
+      }
+    });
+  }, [activeSourceId]);
+
+  const activeSource = useMemo(
+    () => items.find((item) => item.id === activeSourceId),
+    [items, activeSourceId],
+  );
 
   const handleSend = async () => {
-    const trimmed = inputText.trim();
+    const trimmed = message.trim();
     if (!trimmed || loading) return;
 
-    const userMessage: ChatMessage = {
+    const timestamp = new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
+      role: "user",
       text: trimmed,
-      sender: "user",
+      time: timestamp,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText("");
+    setMessages((prev) => [...prev, userMsg]);
+    setMessage("");
     setLoading(true);
 
     try {
-      const botReply = await sendChatMessage(trimmed, DEV_USER_ID);
+      const includeProgress = activeSourceId !== null;
+      const botReply = await sendChatMessage(
+        trimmed,
+        DEV_USER_ID,
+        includeProgress,
+        activeSourceId,
+      );
 
-      const botMessage: ChatMessage = {
+      const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
+        role: "assistant",
         text: botReply,
-        sender: "bot",
+        time: timestamp,
+        sources: activeSource ? [activeSource.title] : undefined,
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((prev) => [...prev, botMsg]);
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Gagal mengirim pesan";
+      const errorMsg = error instanceof Error ? error.message : "Gagal mengirim pesan";
       Alert.alert("Error", errorMsg);
 
-      // Add error bubble so user sees it inline
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
+        role: "assistant",
         text: "⚠️ Gagal mendapat respons. Silakan coba lagi.",
-        sender: "bot",
+        time: timestamp,
       };
+
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderMessage = ({ item }: { item: ChatMessage }) => {
-    const isUser = item.sender === "user";
-
-    return (
-      <View className={`mb-3 px-1 ${isUser ? "items-end" : "items-start"}`}>
-        <View
-          className={`rounded-2xl px-4 py-3 max-w-[80%] ${
-            isUser ? "bg-green-600" : "bg-gray-100"
-          }`}
-          style={
-            isUser
-              ? { borderBottomRightRadius: 4 }
-              : { borderBottomLeftRadius: 4 }
-          }
-        >
-          <Text
-            className={`text-sm leading-5 ${
-              isUser ? "text-white" : "text-gray-800"
-            }`}
-          >
-            {item.text}
-          </Text>
-        </View>
-      </View>
-    );
-  };
-
   return (
-    <ScreenWrapper scrollable={false}>
+    <ScreenWrapper>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        {/* Header */}
-        <View className="flex-row items-center py-2 mb-2">
-          <View className="bg-green-100 p-2 rounded-full mr-3">
-            <Ionicons name="chatbubbles" size={22} color="#16a34a" />
-          </View>
-          <View>
-            <Text className="text-lg font-bold text-gray-800">
-              Asisten Kompos
+        <View className="pt-2">
+          <AppHeader rightSlot={<Ionicons name="sparkles" size={20} color="#16a34a" />} />
+
+          <View className="mt-3">
+            <Text className="text-2xl font-bold text-gray-800">Kompos AI Assistant</Text>
+            <Text className="text-gray-500 mt-1">
+              Chat dengan konteks progres komposmu.
             </Text>
-            <Text className="text-xs text-gray-400">Powered by AI</Text>
+          </View>
+
+          <View className="mt-4 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Sumber Konteks
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-3 pr-4">
+                <TouchableOpacity
+                  onPress={() => setActiveSourceId(null)}
+                  className={`px-4 py-3 rounded-2xl border ${
+                    activeSourceId === null
+                      ? "bg-green-600 border-green-600"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-semibold ${
+                      activeSourceId === null ? "text-white" : "text-gray-700"
+                    }`}
+                  >
+                    Tanpa konteks
+                  </Text>
+                </TouchableOpacity>
+                {items.map((item) => {
+                  const isActive = item.id === activeSourceId;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => setActiveSourceId(item.id)}
+                      className={`px-4 py-3 rounded-2xl border ${
+                        isActive
+                          ? "bg-green-600 border-green-600"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${
+                          isActive ? "text-white" : "text-gray-700"
+                        }`}
+                      >
+                        {item.title}
+                      </Text>
+                      <Text
+                        className={`text-[11px] ${
+                          isActive ? "text-green-50" : "text-gray-400"
+                        }`}
+                      >
+                        {item.date}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+
+            <View className="mt-3 bg-gray-50 rounded-xl p-3">
+              <Text className="text-xs text-gray-500">Konteks aktif</Text>
+              <Text className="text-sm font-semibold text-gray-900 mt-1">
+                {activeSource?.title ?? "Tanpa konteks"}
+              </Text>
+              <Text className="text-xs text-gray-500 mt-1">
+                {activeSource?.status ?? "Tidak ada status"} ·{" "}
+                {activeSource?.ratio ?? "-"}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Messages */}
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          className="flex-1"
-          contentContainerStyle={{ paddingVertical: 8 }}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
-          showsVerticalScrollIndicator={false}
-        />
+        <View className="flex-1 mt-4 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+          <View className="flex-1">
+            <ScrollView
+              ref={chatScrollRef}
+              showsVerticalScrollIndicator={false}
+              onContentSizeChange={() =>
+                chatScrollRef.current?.scrollToEnd({ animated: true })
+              }
+              contentContainerStyle={{ paddingBottom: 12 }}
+            >
+              <View className="gap-4">
+                {messages.map((msg) => {
+                  const isUser = msg.role === "user";
+                  return (
+                    <View key={msg.id} className="gap-2">
+                      {!isUser ? (
+                        <View className="flex-row items-center gap-2">
+                          <View className="w-7 h-7 rounded-full bg-green-600 items-center justify-center">
+                            <Text className="text-white text-[11px] font-semibold">
+                              AI
+                            </Text>
+                          </View>
+                          <Text className="text-xs text-gray-500">Kompos AI</Text>
+                        </View>
+                      ) : null}
 
-        {/* Typing Indicator */}
-        {loading && (
-          <View className="flex-row items-center px-2 py-2">
-            <ActivityIndicator size="small" color="#16a34a" />
-            <Text className="text-gray-400 text-xs ml-2">
-              AI sedang mengetik...
+                      <View
+                        className={`rounded-3xl px-4 py-3 ${
+                          isUser
+                            ? "bg-green-600 self-end"
+                            : "bg-gray-50 border border-gray-200 self-start"
+                        }`}
+                        style={{ maxWidth: "88%" }}
+                      >
+                        <Text
+                          className={
+                            isUser ? "text-white text-sm" : "text-gray-700 text-sm"
+                          }
+                        >
+                          {msg.text}
+                        </Text>
+                      </View>
+
+                      <View
+                        className={`flex-row items-center ${
+                          isUser ? "self-end" : "self-start"
+                        }`}
+                      >
+                        <Text className="text-xs text-gray-400">{msg.time}</Text>
+                      </View>
+
+                      {!isUser && msg.sources?.length ? (
+                        <View className="flex-row flex-wrap gap-2">
+                          {msg.sources.map((source) => (
+                            <View
+                              key={`${msg.id}-${source}`}
+                              className="bg-gray-100 px-2 py-1 rounded-full"
+                            >
+                              <Text className="text-[11px] text-gray-600">{source}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+
+          <View className="pt-3">
+            <View className="flex-row items-end gap-2">
+              <View className="flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-3">
+                <TextInput
+                  value={message}
+                  onChangeText={setMessage}
+                  placeholder="Tulis pertanyaan..."
+                  className="text-sm text-gray-700"
+                  multiline
+                  editable={!loading}
+                />
+              </View>
+              <TouchableOpacity
+                onPress={handleSend}
+                disabled={loading || !message.trim()}
+                className="bg-green-600 rounded-full w-11 h-11 items-center justify-center"
+                style={{ opacity: loading || !message.trim() ? 0.6 : 1 }}
+              >
+                <Ionicons name="send" size={16} color="white" />
+              </TouchableOpacity>
+            </View>
+            {loading && (
+              <View className="flex-row items-center mt-2">
+                <ActivityIndicator size="small" color="#16a34a" />
+                <Text className="text-xs text-gray-400 ml-2">AI sedang mengetik...</Text>
+              </View>
+            )}
+            <Text className="text-xs text-gray-400 mt-2">
+              Jawaban AI bersifat rekomendasi awal.
             </Text>
           </View>
-        )}
-
-        {/* Input Bar */}
-        <View className="flex-row items-end py-2 border-t border-gray-200">
-          <TextInput
-            className="flex-1 bg-gray-100 rounded-2xl px-4 py-3 text-sm text-gray-800 mr-2"
-            placeholder="Ketik pesan..."
-            placeholderTextColor="#9ca3af"
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={1000}
-            editable={!loading}
-          />
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={loading || !inputText.trim()}
-            className="bg-green-600 p-3 rounded-full"
-            style={{
-              opacity: loading || !inputText.trim() ? 0.5 : 1,
-            }}
-          >
-            <Ionicons name="send" size={18} color="white" />
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </ScreenWrapper>

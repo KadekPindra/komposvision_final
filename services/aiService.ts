@@ -5,7 +5,20 @@ import type {
   ScanResponse,
 } from "@/types/api";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL!;
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").replace(
+  /\/+$/,
+  "",
+);
+
+const getApiBaseUrl = () => {
+  if (!API_BASE_URL) {
+    throw new Error(
+      "API base URL kosong. Pastikan EXPO_PUBLIC_API_BASE_URL terisi.",
+    );
+  }
+
+  return API_BASE_URL;
+};
 
 /**
  * Sends an image URL + user info to the backend for AI-powered
@@ -14,7 +27,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL!;
 export async function analyzeGarbage(
   imageUrl: string,
   userId: string,
-  batchId?: string | null
+  batchId?: string | null,
 ): Promise<ScanResponse> {
   const body: AnalyzeScanRequest = {
     image_url: imageUrl,
@@ -23,7 +36,7 @@ export async function analyzeGarbage(
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/scan/analyze`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/scan/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -49,15 +62,19 @@ export async function analyzeGarbage(
  */
 export async function sendChatMessage(
   message: string,
-  userId: string
+  userId: string,
+  includeProgress: boolean = false,
+  progressBatchId?: string | null,
 ): Promise<string> {
   const body: ChatMessageRequest = {
     user_id: userId,
     message,
+    include_progress: includeProgress,
+    progress_batch_id: progressBatchId ?? null,
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/chat/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
