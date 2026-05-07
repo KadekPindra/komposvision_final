@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { analyzeGarbage } from "@/services/aiService";
 import { uploadGarbageImage } from "@/utils/supabase";
 
-const DEV_USER_ID = "00000000-0000-0000-0000-000000000000";
+const DEV_USER_ID = "0f76a64a-d37e-4f69-af95-f32002ec1390";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -45,14 +45,20 @@ export default function ScanScreen() {
 
   const processImage = async (localUri: string) => {
     setLoading(true);
+    console.log("[Scan] processImage start", { localUri });
     try {
       // 1. Upload image to Supabase Storage
+      console.log("[Scan] uploadGarbageImage start");
       const publicUrl = await uploadGarbageImage(localUri, DEV_USER_ID);
+      console.log("[Scan] uploadGarbageImage success", { publicUrl });
 
       // 2. Call AI analysis API
+      console.log("[Scan] analyzeGarbage start");
       const result = await analyzeGarbage(publicUrl, DEV_USER_ID);
+      console.log("[Scan] analyzeGarbage success", { result });
 
       // 3. Navigate to result with full ScanResponse
+      console.log("[Scan] navigate to result");
       router.push({
         pathname: "/result",
         params: { data: JSON.stringify(result) },
@@ -60,25 +66,37 @@ export default function ScanScreen() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Terjadi kesalahan";
+      console.log("[Scan] processImage error", { message, error });
       Alert.alert("Error", message);
     } finally {
+      console.log("[Scan] processImage end");
       setLoading(false);
     }
   };
 
   const takePhoto = async () => {
     if (!cameraRef.current) return;
+    console.log("[Scan] takePhoto start");
     const photo = await cameraRef.current.takePictureAsync();
+    console.log("[Scan] takePhoto success", { uri: photo?.uri });
     await processImage(photo.uri);
   };
 
   const pickImage = async () => {
+    console.log("[Scan] pickImage start");
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    console.log("[Scan] pickImage permission", {
+      granted: permission.granted,
+    });
     if (!permission.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
+    });
+    console.log("[Scan] pickImage result", {
+      canceled: result.canceled,
+      assetsCount: result.assets?.length ?? 0,
     });
 
     if (!result.canceled) {
