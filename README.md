@@ -13,7 +13,8 @@
 
 ## 🛠️ Teknologi yang Digunakan
 
-Proyek ini dibangun menggunakan *tech stack* mobile modern:
+Proyek ini dibangun menggunakan _tech stack_ mobile modern:
+
 - **[React Native](https://reactnative.dev/)** - Framework pengembangan aplikasi mobile cross-platform.
 - **[Expo](https://expo.dev/)** - Toolchain dan platform development (menggunakan Expo SDK 54).
 - **[Expo Router](https://docs.expo.dev/router/introduction/)** - File-based routing navigation.
@@ -24,31 +25,83 @@ Proyek ini dibangun menggunakan *tech stack* mobile modern:
 Ikuti langkah-langkah di bawah ini untuk menjalankan proyek di lingkungan pengembangan lokal Anda.
 
 ### Persyaratan Sistem
-- Node.js (direkomendasikan versi LTS)
-- npm, yarn, atau pnpm
-- Aplikasi **Expo Go** terinstal di HP Android/iOS Anda (opsional jika menggunakan Emulator/Simulator).
 
-### Langkah-langkah Instalasi
+- **Node.js** (direkomendasikan versi LTS)
+- **Git**
+- **npm**, **yarn**, atau **pnpm** (pilih salah satu)
+- **Expo Go** di HP Android/iOS (opsional jika menggunakan Emulator/Simulator)
+- **Android Studio** (opsional, jika ingin menjalankan di Android Emulator)
+- **Xcode** (opsional, jika ingin menjalankan di iOS Simulator - macOS saja)
 
-1. **Clone repositori ini**:
-   ```bash
-   git clone https://github.com/KadekPindra/komposvision.git
-   cd komposvision
-   ```
+### 1) Clone repositori
 
-2. **Instal seluruh dependensi**:
-   ```bash
-   npm install
-   ```
+```bash
+git clone https://github.com/KadekPindra/komposvision.git
+cd komposvision
+```
 
-3. **Jalankan *development server***:
-   ```bash
-   npx expo start
-   ```
+### 2) Install dependensi
 
-4. **Buka Aplikasi**:
-   - **Perangkat Asli**: Pindai QR Code yang muncul di terminal/browser menggunakan aplikasi **Expo Go** (untuk Android) atau aplikasi **Kamera bawaan** (untuk iOS).
-   - **Emulator/Simulator**: Tekan tombol `a` di terminal untuk membuka di Android Emulator, atau tekan `i` untuk iOS Simulator.
+Pilih salah satu perintah berikut:
+
+```bash
+npm install
+```
+
+atau
+
+```bash
+yarn
+```
+
+atau
+
+```bash
+pnpm install
+```
+
+### 3) Siapkan file environment (.env)
+
+Proyek ini menggunakan beberapa variabel environment. Buat file `.env` di root proyek (jika belum ada).
+
+Contoh isi `.env`:
+
+```dotenv
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+EXPO_PUBLIC_API_BASE_URL=http://192.168.x.x:8000
+```
+
+Keterangan singkat:
+
+- **EXPO_PUBLIC_SUPABASE_URL** dan **EXPO_PUBLIC_SUPABASE_ANON_KEY**: isi dari proyek Supabase Anda.
+- **EXPO_PUBLIC_API_BASE_URL**: URL backend lokal. Jika backend berjalan di laptop/PC Anda, gunakan IP lokal (contoh `192.168.x.x`) dan pastikan HP Anda berada di jaringan Wi-Fi yang sama.
+
+### 4) Jalankan development server
+
+```bash
+npx expo start
+```
+
+### 5) Buka aplikasi
+
+- **Perangkat asli**: Scan QR Code menggunakan **Expo Go** (Android) atau **Kamera** (iOS).
+- **Emulator Android**: Tekan `a` di terminal.
+- **iOS Simulator**: Tekan `i` di terminal (macOS saja).
+
+---
+
+## ✅ Cek Cepat (Jika Aplikasi Tidak Muncul)
+
+- Pastikan Node.js versi LTS terpasang: `node -v`.
+- Pastikan HP dan laptop berada pada Wi-Fi yang sama.
+- Jika error terkait dependency, coba hapus cache dan install ulang:
+  ```bash
+  rm -rf node_modules
+  npm install
+  npx expo start -c
+  ```
+- Jika QR tidak bisa dibuka, gunakan mode **Tunnel** di menu Expo DevTools.
 
 ## 📁 Struktur Folder
 
@@ -71,7 +124,8 @@ komposvision/
 
 ## 🤝 Kontribusi
 
-Kontribusi dari komunitas akan sangat dihargai! Jika Anda menemukan *bug* atau ingin menambahkan fitur baru, silakan buka **Issue** baru atau *submit* **Pull Request**.
+Kontribusi dari komunitas akan sangat dihargai! Jika Anda menemukan _bug_ atau ingin menambahkan fitur baru, silakan buka **Issue** baru atau _submit_ **Pull Request**.
 
 ---
-*Dibuat dengan ❤️ untuk lingkungan yang lebih hijau.*
+
+_Dibuat dengan ❤️ untuk lingkungan yang lebih hijau._
