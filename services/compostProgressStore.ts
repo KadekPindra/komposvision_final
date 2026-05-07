@@ -6,7 +6,7 @@ import {
 type Listener = () => void;
 
 type UpdatePayload = {
-  id: number;
+  id: string;
   progressDelta?: number;
   status?: string;
   nextAction?: string;
@@ -31,9 +31,14 @@ const notify = () => {
   listeners.forEach((listener) => listener());
 };
 
+export const setCompostProgress = (items: CompostItem[]) => {
+  progressState = items;
+  listeners.forEach((listener) => listener());
+};
+
 export const getCompostProgress = () => progressState;
 
-export const getCompostItem = (id: number) =>
+export const getCompostItem = (id: string) =>
   progressState.find((item) => item.id === id);
 
 export const updateCompostProgress = (payload: UpdatePayload) => {

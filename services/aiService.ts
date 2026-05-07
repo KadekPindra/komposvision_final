@@ -14,7 +14,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL!;
 export async function analyzeGarbage(
   imageUrl: string,
   userId: string,
-  batchId?: string | null
+  batchId?: string | null,
 ): Promise<ScanResponse> {
   const body: AnalyzeScanRequest = {
     image_url: imageUrl,
@@ -37,8 +37,7 @@ export async function analyzeGarbage(
     const data: ScanResponse = await response.json();
     return data;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error occurred";
+    const message = error instanceof Error ? error.message : "Unknown error occurred";
     throw new Error(`analyzeGarbage failed: ${message}`);
   }
 }
@@ -49,11 +48,15 @@ export async function analyzeGarbage(
  */
 export async function sendChatMessage(
   message: string,
-  userId: string
+  userId: string,
+  includeProgress: boolean = false,
+  progressBatchId?: string | null,
 ): Promise<string> {
   const body: ChatMessageRequest = {
     user_id: userId,
     message,
+    include_progress: includeProgress,
+    progress_batch_id: progressBatchId ?? null,
   };
 
   try {
@@ -71,8 +74,7 @@ export async function sendChatMessage(
     const data: ChatResponse = await response.json();
     return data.bot_message;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error occurred";
+    const message = error instanceof Error ? error.message : "Unknown error occurred";
     throw new Error(`sendChatMessage failed: ${message}`);
   }
 }

@@ -7,6 +7,8 @@ export interface AnalyzeScanRequest {
 export interface ChatMessageRequest {
   user_id: string;
   message: string;
+  include_progress?: boolean;
+  progress_batch_id?: string | null;
 }
 
 export interface ScanResponse {

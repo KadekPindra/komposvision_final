@@ -2,6 +2,8 @@ import AppHeader from "@/components/AppHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { setCompostProgress } from "@/services/compostProgressStore";
+import { CompostItem as StoreCompostItem } from "@/services/compostProgress";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
 type CompostItemResponse = {
@@ -44,7 +46,7 @@ type CompostItem = {
   progress: number;
 };
 
-const mapCompostItem = (item: CompostItemResponse): CompostItem => ({
+const mapCompostItem = (item: CompostItemResponse): StoreCompostItem => ({
   id: item.id,
   image: item.image_url ?? "",
   date: item.date,
@@ -52,6 +54,18 @@ const mapCompostItem = (item: CompostItemResponse): CompostItem => ({
   title: item.name,
   status: item.status,
   progress: item.progress,
+  summary: item.summary ?? "",
+  temperatureC: item.temperature_c,
+  moisture: item.moisture,
+  nextAction: item.next_action ?? "",
+  etaDays: item.eta_days,
+  composition: item.composition,
+  activities: item.activities.map(a => ({
+    title: a.title,
+    time: a.time,
+    description: a.description,
+    isActive: a.is_active
+  }))
 });
 
 type ProgressBarProps = {
@@ -143,7 +157,9 @@ export default function ProgressScreen() {
         if (!response.ok) return;
         const data = (await response.json()) as CompostItemResponse[];
         if (isActive) {
-          setItems(data.map(mapCompostItem));
+          const mappedItems = data.map(mapCompostItem);
+          setItems(mappedItems as any);
+          setCompostProgress(mappedItems);
         }
       } catch {
         // Ignore fetch errors for now.
