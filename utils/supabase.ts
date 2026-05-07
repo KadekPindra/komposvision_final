@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import "react-native-url-polyfill/auto";
 import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
+import "react-native-url-polyfill/auto";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
@@ -63,8 +63,7 @@ export async function uploadGarbageImage(
       },
     };
 
-    const uploadType = (FileSystem as any).FileSystemUploadType
-      ?.BINARY_CONTENT;
+    const uploadType = (FileSystem as any).FileSystemUploadType?.BINARY_CONTENT;
     if (uploadType) {
       uploadOptions.uploadType = uploadType;
     }
