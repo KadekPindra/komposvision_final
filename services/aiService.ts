@@ -5,7 +5,20 @@ import type {
   ScanResponse,
 } from "@/types/api";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL!;
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").replace(
+  /\/+$/,
+  "",
+);
+
+const getApiBaseUrl = () => {
+  if (!API_BASE_URL) {
+    throw new Error(
+      "API base URL kosong. Pastikan EXPO_PUBLIC_API_BASE_URL terisi.",
+    );
+  }
+
+  return API_BASE_URL;
+};
 
 /**
  * Sends an image URL + user info to the backend for AI-powered
@@ -23,7 +36,7 @@ export async function analyzeGarbage(
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/scan/analyze`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/scan/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -37,7 +50,8 @@ export async function analyzeGarbage(
     const data: ScanResponse = await response.json();
     return data;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error occurred";
+    const message =
+      error instanceof Error ? error.message : "Unknown error occurred";
     throw new Error(`analyzeGarbage failed: ${message}`);
   }
 }
@@ -60,7 +74,7 @@ export async function sendChatMessage(
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/chat/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -74,7 +88,8 @@ export async function sendChatMessage(
     const data: ChatResponse = await response.json();
     return data.bot_message;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error occurred";
+    const message =
+      error instanceof Error ? error.message : "Unknown error occurred";
     throw new Error(`sendChatMessage failed: ${message}`);
   }
 }

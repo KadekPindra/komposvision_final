@@ -23,6 +23,7 @@ export default function ScanScreen() {
   const router = useRouter();
   const [flash, setFlash] = useState<"off" | "on">("off");
   const [loading, setLoading] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   if (!permission) return <View />;
 
@@ -38,6 +39,23 @@ export default function ScanScreen() {
           className="bg-green-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Izinkan Kamera</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (cameraError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-lg font-semibold mb-3 text-center">
+          Kamera gagal dibuka
+        </Text>
+        <Text className="text-sm text-gray-600 text-center">{cameraError}</Text>
+        <TouchableOpacity
+          onPress={() => setCameraError(null)}
+          className="mt-4 bg-green-600 px-6 py-3 rounded-xl"
+        >
+          <Text className="text-white font-semibold">Coba Lagi</Text>
         </TouchableOpacity>
       </View>
     );
@@ -110,9 +128,12 @@ export default function ScanScreen() {
         ref={cameraRef}
         style={{ flex: 1 }}
         facing="back"
-        ratio="16:9"
-        selectedLens=""
         flash={flash}
+        onMountError={(event) => {
+          const message = event?.message ?? "Terjadi kesalahan kamera";
+          console.log("[Scan] CameraView mount error", { message });
+          setCameraError(message);
+        }}
       />
 
       {/* Loading Overlay */}

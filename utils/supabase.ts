@@ -3,10 +3,18 @@ import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import "react-native-url-polyfill/auto";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const getSupabaseClient = () => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      "Supabase env kosong. Pastikan EXPO_PUBLIC_SUPABASE_URL dan EXPO_PUBLIC_SUPABASE_ANON_KEY terisi.",
+    );
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey);
+};
 
 async function pingSupabase(url: string, label: string) {
   try {
@@ -29,6 +37,13 @@ export async function uploadGarbageImage(
   localUri: string,
   userId: string,
 ): Promise<string> {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      "Supabase env kosong. Pastikan EXPO_PUBLIC_SUPABASE_URL dan EXPO_PUBLIC_SUPABASE_ANON_KEY terisi.",
+    );
+  }
+
+  const supabase = getSupabaseClient();
   console.log("[Upload] start", { localUri, userId });
   await pingSupabase(`${supabaseUrl}/auth/v1/health`, "auth");
   await pingSupabase(`${supabaseUrl}/storage/v1/version`, "storage");
