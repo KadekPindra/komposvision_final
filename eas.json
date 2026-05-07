@@ -1,0 +1,36 @@
+{
+  "cli": {
+    "version": ">= 18.11.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fjiixeftqsvugfmfnvgw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaWl4ZWZ0cXN2dWdmbWZudmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjM1NzAsImV4cCI6MjA5MzUzOTU3MH0.vx7pUkEu73abp7fflqHobVundMA0zhC8MqjV3CcTEPk",
+        "EXPO_PUBLIC_API_BASE_URL": "https://komposvision-api-fase8.ondigitalocean.app/"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fjiixeftqsvugfmfnvgw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaWl4ZWZ0cXN2dWdmbWZudmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjM1NzAsImV4cCI6MjA5MzUzOTU3MH0.vx7pUkEu73abp7fflqHobVundMA0zhC8MqjV3CcTEPk",
+        "EXPO_PUBLIC_API_BASE_URL": "https://komposvision-api-fase8.ondigitalocean.app/"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fjiixeftqsvugfmfnvgw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaWl4ZWZ0cXN2dWdmbWZudmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjM1NzAsImV4cCI6MjA5MzUzOTU3MH0.vx7pUkEu73abp7fflqHobVundMA0zhC8MqjV3CcTEPk",
+        "EXPO_PUBLIC_API_BASE_URL": "https://komposvision-api-fase8.ondigitalocean.app/"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
