@@ -58,7 +58,10 @@ export default function ResultScreen() {
   const [isAdviceExpanded, setIsAdviceExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
-  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const apiBaseUrl = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").replace(
+    /\/+$/,
+    "",
+  );
 
   if (
     Platform.OS === "android" &&
@@ -479,7 +482,7 @@ export default function ResultScreen() {
                 }
 
                 const response = await fetch(
-                  `${apiBaseUrl}/api/progress/${result.batch_id}`,
+                  `${apiBaseUrl}/api/progress/${result.batch_id}/`,
                   {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
