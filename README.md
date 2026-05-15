@@ -1,4 +1,4 @@
-# 🍃 KomposVision
+a# 🍃 KomposVision
 
 **KomposVision** adalah aplikasi mobile pintar yang membantu Anda memonitor, mengelola, dan mengoptimalkan proses pembuatan kompos di rumah. Dengan memanfaatkan kamera smartphone, KomposVision dapat menganalisis tingkat keseimbangan rasio bahan pada tumpukan kompos Anda dan memberikan rekomendasi praktis.
 

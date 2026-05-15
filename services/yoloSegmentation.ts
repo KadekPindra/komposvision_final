@@ -1,4 +1,4 @@
-import { CN_RATIO_TABLE } from "@/constants/cnRatioTable";
+import { lookupCN, SEGMENTATION_CLASSES } from "@/constants/cnRatioTable";
 
 export type SegmentationDetection = {
   classId: number;
@@ -20,35 +20,40 @@ export type CompositionResult = {
 };
 
 const calculateRatio = (detections: SegmentationDetection[]) => {
-  let carbonScore = 0;
-  let nitrogenScore = 0;
+  let totalCarbon = 0;
+  let totalNitrogen = 0;
   const carbonItems = new Set<string>();
   const nitrogenItems = new Set<string>();
 
   detections.forEach((det) => {
-    const info = CN_RATIO_TABLE[det.className];
-    if (!info) return;
+    // Resolve class name from SEGMENTATION_CLASSES if not already set
+    const nameId =
+      det.className || SEGMENTATION_CLASSES[det.classId] || `class_${det.classId}`;
+    const info = lookupCN(nameId);
+
     const area = Math.max(
       1,
       (det.bbox[2] - det.bbox[0]) * (det.bbox[3] - det.bbox[1]),
     );
-    carbonScore += area * info.carbon;
-    nitrogenScore += area * info.nitrogen;
-    if (info.carbon >= 30) {
-      carbonItems.add(det.className);
+
+    // C:N ratio = cnRatio:1, so carbon contribution = area × cnRatio, nitrogen = area × 1
+    totalCarbon += area * info.cnRatio;
+    totalNitrogen += area;
+
+    if (info.type === "carbon") {
+      carbonItems.add(info.nameDisplay);
     } else {
-      nitrogenItems.add(det.className);
+      nitrogenItems.add(info.nameDisplay);
     }
   });
 
   const ratioValue =
-    nitrogenScore > 0 ? Math.round(carbonScore / nitrogenScore) : 0;
-  const ratioText = ratioValue > 0 ? `${ratioValue}:1` : "-";
+    totalNitrogen > 0 ? Math.round(totalCarbon / totalNitrogen) : 0;
 
   return {
     carbonItems: Array.from(carbonItems),
     nitrogenItems: Array.from(nitrogenItems),
-    ratioText,
+    ratioText: ratioValue > 0 ? `${ratioValue}:1` : "-",
   };
 };
 
@@ -56,6 +61,7 @@ export async function analyzeComposition(
   imageUri: string,
 ): Promise<CompositionResult> {
   void imageUri;
+  // TODO: jalankan TFLite inference dengan yolo11m_seg_cn.tflite dan isi detections
   const detections: SegmentationDetection[] = [];
   const { carbonItems, nitrogenItems, ratioText } = calculateRatio(detections);
 
