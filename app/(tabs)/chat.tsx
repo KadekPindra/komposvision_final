@@ -1,10 +1,7 @@
 import AppHeader from "@/components/AppHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
-import { sendChatMessage } from "@/services/aiService";
-import {
-  getCompostProgress,
-  subscribeCompostProgress,
-} from "@/services/compostProgressStore";
+import { database } from "@/database";
+import { respondToChat } from "@/services/localChatResponder";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -27,10 +24,16 @@ type ChatMessage = {
   sources?: string[];
 };
 
-const DEV_USER_ID = "0f76a64a-d37e-4f69-af95-f32002ec1390";
+type ChatSource = {
+  id: string;
+  title: string;
+  date: string;
+  status: string;
+  ratio: string;
+};
 
 export default function ChatScreen() {
-  const [items, setItems] = useState(getCompostProgress());
+  const [items, setItems] = useState<ChatSource[]>([]);
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,13 +48,25 @@ export default function ChatScreen() {
   const chatScrollRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
-    return subscribeCompostProgress(() => {
-      const nextItems = getCompostProgress();
-      setItems(nextItems);
-      if (activeSourceId === null && nextItems.length > 0) {
-        setActiveSourceId(nextItems[0].id);
-      }
-    });
+    const subscription = database
+      .get("compost_batches")
+      .query()
+      .observe()
+      .subscribe((records: any[]) => {
+        const mapped = records.map((item: any) => ({
+          id: item.id,
+          title: item.title ?? "Kompos",
+          date: item.lastUpdatedFormatted ?? "",
+          status: item.status ?? "Aktif",
+          ratio: item.ratio ?? "-",
+        }));
+        setItems(mapped);
+        if (activeSourceId === null && mapped.length > 0) {
+          setActiveSourceId(mapped[0].id);
+        }
+      });
+
+    return () => subscription.unsubscribe();
   }, [activeSourceId]);
 
   const activeSource = useMemo(
@@ -80,13 +95,7 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      const includeProgress = activeSourceId !== null;
-      const botReply = await sendChatMessage(
-        trimmed,
-        DEV_USER_ID,
-        includeProgress,
-        activeSourceId,
-      );
+      const botReply = await respondToChat(trimmed, activeSourceId);
 
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
@@ -98,7 +107,8 @@ export default function ChatScreen() {
 
       setMessages((prev) => [...prev, botMsg]);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Gagal mengirim pesan";
+      const errorMsg =
+        error instanceof Error ? error.message : "Gagal mengirim pesan";
       Alert.alert("Error", errorMsg);
 
       const errorMessage: ChatMessage = {
@@ -121,10 +131,14 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View className="pt-2">
-          <AppHeader rightSlot={<Ionicons name="sparkles" size={20} color="#16a34a" />} />
+          <AppHeader
+            rightSlot={<Ionicons name="sparkles" size={20} color="#16a34a" />}
+          />
 
           <View className="mt-3">
-            <Text className="text-2xl font-bold text-gray-800">Kompos AI Assistant</Text>
+            <Text className="text-2xl font-bold text-gray-800">
+              Kompos AI Assistant
+            </Text>
             <Text className="text-gray-500 mt-1">
               Chat dengan konteks progres komposmu.
             </Text>
@@ -219,7 +233,9 @@ export default function ChatScreen() {
                               AI
                             </Text>
                           </View>
-                          <Text className="text-xs text-gray-500">Kompos AI</Text>
+                          <Text className="text-xs text-gray-500">
+                            Kompos AI
+                          </Text>
                         </View>
                       ) : null}
 
@@ -233,7 +249,9 @@ export default function ChatScreen() {
                       >
                         <Text
                           className={
-                            isUser ? "text-white text-sm" : "text-gray-700 text-sm"
+                            isUser
+                              ? "text-white text-sm"
+                              : "text-gray-700 text-sm"
                           }
                         >
                           {msg.text}
@@ -245,7 +263,9 @@ export default function ChatScreen() {
                           isUser ? "self-end" : "self-start"
                         }`}
                       >
-                        <Text className="text-xs text-gray-400">{msg.time}</Text>
+                        <Text className="text-xs text-gray-400">
+                          {msg.time}
+                        </Text>
                       </View>
 
                       {!isUser && msg.sources?.length ? (
@@ -255,7 +275,9 @@ export default function ChatScreen() {
                               key={`${msg.id}-${source}`}
                               className="bg-gray-100 px-2 py-1 rounded-full"
                             >
-                              <Text className="text-[11px] text-gray-600">{source}</Text>
+                              <Text className="text-[11px] text-gray-600">
+                                {source}
+                              </Text>
                             </View>
                           ))}
                         </View>
@@ -291,7 +313,9 @@ export default function ChatScreen() {
             {loading && (
               <View className="flex-row items-center mt-2">
                 <ActivityIndicator size="small" color="#16a34a" />
-                <Text className="text-xs text-gray-400 ml-2">AI sedang mengetik...</Text>
+                <Text className="text-xs text-gray-400 ml-2">
+                  AI sedang mengetik...
+                </Text>
               </View>
             )}
             <Text className="text-xs text-gray-400 mt-2">

@@ -1,21 +1,73 @@
 import AppHeader from "@/components/AppHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
-import {
-  getCompostProgress,
-  subscribeCompostProgress,
-} from "@/services/compostProgressStore";
+import { database } from "@/database";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Q } from "@nozbe/watermelondb";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
+type CompostItem = {
+  id: string;
+  image: string;
+  date: string;
+  ratio: string;
+  title: string;
+  status: string;
+  progress: number;
+};
+
+type ActivityItem = {
+  title: string;
+  time: string;
+  description: string;
+};
+
 export default function HomeScreen() {
-  const [items, setItems] = useState(getCompostProgress());
+  const [items, setItems] = useState<CompostItem[]>([]);
+  const [latestActivity, setLatestActivity] = useState<ActivityItem | null>(
+    null,
+  );
 
   useEffect(() => {
-    return subscribeCompostProgress(() => {
-      setItems(getCompostProgress());
-    });
+    const batchesSub = database
+      .get("compost_batches")
+      .query()
+      .observe()
+      .subscribe((records: any[]) => {
+        const mapped = records.map((item: any) => ({
+          id: item.id,
+          image: item.imageUri ?? "",
+          date: item.lastUpdatedFormatted ?? "",
+          ratio: item.ratio ?? "-",
+          title: item.title ?? "Kompos",
+          status: item.status ?? "Aktif",
+          progress: typeof item.progress === "number" ? item.progress : 0,
+        }));
+        setItems(mapped);
+      });
+
+    const activitiesSub = database
+      .get("compost_activities")
+      .query(Q.sortBy("created_at", Q.desc))
+      .observe()
+      .subscribe((records: any[]) => {
+        const latest = records[0];
+        if (!latest) {
+          setLatestActivity(null);
+          return;
+        }
+        setLatestActivity({
+          title: latest.title,
+          time: latest.timeLabel,
+          description: latest.description,
+        });
+      });
+
+    return () => {
+      batchesSub.unsubscribe();
+      activitiesSub.unsubscribe();
+    };
   }, []);
 
   const summary = useMemo(() => {
@@ -27,7 +79,6 @@ export default function HomeScreen() {
       (best, item) => (item.progress > best.progress ? item : best),
       items[0],
     );
-    const latestActivity = items[0]?.activities?.[0];
     const latestScan = items[0];
     const progressBuckets = items
       .slice(0, 6)
@@ -44,7 +95,7 @@ export default function HomeScreen() {
       latestScan,
       chartData,
     };
-  }, [items]);
+  }, [items, latestActivity]);
 
   const progressLabel =
     summary.averageProgress >= 70

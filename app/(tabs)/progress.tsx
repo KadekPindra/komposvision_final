@@ -1,40 +1,9 @@
 import AppHeader from "@/components/AppHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
+import { database } from "@/database";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { setCompostProgress } from "@/services/compostProgressStore";
-import { CompostItem as StoreCompostItem } from "@/services/compostProgress";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-
-type CompostItemResponse = {
-  id: string;
-  image_url?: string | null;
-  date: string;
-  current_ratio: string;
-  name: string;
-  status: string;
-  progress: number;
-  summary?: string | null;
-  temperature_c: number;
-  moisture: "Rendah" | "Sedang" | "Tinggi";
-  next_action?: string | null;
-  eta_days: number;
-  composition: {
-    label: string;
-    detail: string;
-    percent: number;
-    tone: "green" | "brown";
-  }[];
-  activities: {
-    title: string;
-    time: string;
-    description: string;
-    is_active: boolean;
-  }[];
-};
-
-const DEV_USER_ID = "0f76a64a-d37e-4f69-af95-f32002ec1390";
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 type CompostItem = {
   id: string;
@@ -46,26 +15,14 @@ type CompostItem = {
   progress: number;
 };
 
-const mapCompostItem = (item: CompostItemResponse): StoreCompostItem => ({
+const mapCompostItem = (item: any): CompostItem => ({
   id: item.id,
-  image: item.image_url ?? "",
-  date: item.date,
-  ratio: item.current_ratio,
-  title: item.name,
-  status: item.status,
-  progress: item.progress,
-  summary: item.summary ?? "",
-  temperatureC: item.temperature_c,
-  moisture: item.moisture,
-  nextAction: item.next_action ?? "",
-  etaDays: item.eta_days,
-  composition: item.composition,
-  activities: item.activities.map(a => ({
-    title: a.title,
-    time: a.time,
-    description: a.description,
-    isActive: a.is_active
-  }))
+  image: item.imageUri ?? "",
+  date: item.lastUpdatedFormatted ?? "",
+  ratio: item.ratio ?? "-",
+  title: item.title ?? "Kompos",
+  status: item.status ?? "Aktif",
+  progress: typeof item.progress === "number" ? item.progress : 0,
 });
 
 type ProgressBarProps = {
@@ -144,33 +101,29 @@ const CompostCard: React.FC<CompostCardProps> = ({ item, onPress }) => {
 
 export default function ProgressScreen() {
   const [items, setItems] = useState<CompostItem[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isActive = true;
+    const collection = database.get("compost_batches");
+    const subscription = collection
+      .query()
+      .observe()
+      .subscribe({
+        next: (records: any[]) => {
+          setItems(records.map(mapCompostItem));
+          setErrorMessage(null);
+          setLoading(false);
+        },
+        error: (error: unknown) => {
+          const message =
+            error instanceof Error ? error.message : "Terjadi kesalahan";
+          setErrorMessage(message);
+          setLoading(false);
+        },
+      });
 
-    const fetchProgress = async () => {
-      if (!API_BASE_URL) return;
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/progress/?user_id=${DEV_USER_ID}`,
-        );
-        if (!response.ok) return;
-        const data = (await response.json()) as CompostItemResponse[];
-        if (isActive) {
-          const mappedItems = data.map(mapCompostItem);
-          setItems(mappedItems as any);
-          setCompostProgress(mappedItems);
-        }
-      } catch {
-        // Ignore fetch errors for now.
-      }
-    };
-
-    fetchProgress();
-
-    return () => {
-      isActive = false;
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   return (
@@ -196,19 +149,35 @@ export default function ProgressScreen() {
           </Text>
         </View>
 
-        {/* Compost Cards */}
-        {items.map((item) => (
-          <CompostCard
-            key={item.id}
-            item={item}
-            onPress={() =>
-              router.push({
-                pathname: "/progress-detail",
-                params: { id: String(item.id) },
-              })
-            }
-          />
-        ))}
+        {!loading && errorMessage && (
+          <View className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <Text className="text-red-700 text-sm font-medium">
+              {errorMessage}
+            </Text>
+          </View>
+        )}
+
+        {!loading && !errorMessage && items.length === 0 && (
+          <View className="bg-white border border-gray-200 rounded-xl p-4">
+            <Text className="text-gray-600 text-sm">
+              Belum ada progress tersimpan.
+            </Text>
+          </View>
+        )}
+
+        {!errorMessage &&
+          items.map((item) => (
+            <CompostCard
+              key={item.id}
+              item={item}
+              onPress={() =>
+                router.push({
+                  pathname: "/progress-detail",
+                  params: { id: String(item.id) },
+                })
+              }
+            />
+          ))}
       </View>
     </ScreenWrapper>
   );

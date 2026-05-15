@@ -1,5 +1,4 @@
 import { Entypo, Ionicons } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
@@ -11,23 +10,26 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+} from "react-native-vision-camera";
 
-import { analyzeGarbage } from "@/services/aiService";
-import { uploadGarbageImage } from "@/utils/supabase";
-
-const DEV_USER_ID = "0f76a64a-d37e-4f69-af95-f32002ec1390";
+import { detectBlurFromImage } from "@/services/blurDetection";
+import { detectContaminantsFromImage } from "@/services/yoloContaminant";
+import { analyzeComposition } from "@/services/yoloSegmentation";
 
 export default function ScanScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
-  const cameraRef = useRef<any>(null);
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice("back");
+  const cameraRef = useRef<Camera>(null);
   const router = useRouter();
   const [flash, setFlash] = useState<"off" | "on">("off");
   const [loading, setLoading] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
-  if (!permission) return <View />;
-
-  if (!permission.granted) {
+  if (!hasPermission) {
     return (
       <View className="flex-1 items-center justify-center bg-white px-6">
         <Text className="text-lg font-semibold mb-4 text-center">
@@ -40,6 +42,15 @@ export default function ScanScreen() {
         >
           <Text className="text-white font-semibold">Izinkan Kamera</Text>
         </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!device) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <ActivityIndicator size="large" color="#16a34a" />
+        <Text className="text-gray-600 mt-3">Menyiapkan kamera...</Text>
       </View>
     );
   }
@@ -65,17 +76,28 @@ export default function ScanScreen() {
     setLoading(true);
     console.log("[Scan] processImage start", { localUri });
     try {
-      // 1. Upload image to Supabase Storage
-      console.log("[Scan] uploadGarbageImage start");
-      const publicUrl = await uploadGarbageImage(localUri, DEV_USER_ID);
-      console.log("[Scan] uploadGarbageImage success", { publicUrl });
+      const blurResult = await detectBlurFromImage(localUri);
+      if (blurResult.isBlurry) {
+        Alert.alert("Gambar terlalu buram", "Silakan ambil foto ulang.");
+        return;
+      }
 
-      // 2. Call AI analysis API
-      console.log("[Scan] analyzeGarbage start");
-      const result = await analyzeGarbage(publicUrl, DEV_USER_ID);
-      console.log("[Scan] analyzeGarbage success", { result });
+      const contaminants = await detectContaminantsFromImage(localUri);
+      const composition = await analyzeComposition(localUri);
 
-      // 3. Navigate to result with full ScanResponse
+      const result = {
+        imageUri: localUri,
+        carbonItems: composition.carbonItems,
+        nitrogenItems: composition.nitrogenItems,
+        estimatedRatio: composition.estimatedRatio,
+        composition: composition.composition,
+        contaminants,
+        aiInstruction:
+          contaminants.length > 0
+            ? "Kontaminan terdeteksi, mohon dipisahkan."
+            : "Bahan organik terdeteksi.",
+      };
+
       console.log("[Scan] navigate to result");
       router.push({
         pathname: "/result",
@@ -95,9 +117,14 @@ export default function ScanScreen() {
   const takePhoto = async () => {
     if (!cameraRef.current) return;
     console.log("[Scan] takePhoto start");
-    const photo = await cameraRef.current.takePictureAsync();
-    console.log("[Scan] takePhoto success", { uri: photo?.uri });
-    await processImage(photo.uri);
+    const photo = await cameraRef.current.takePhoto({
+      flash: flash === "on" ? "on" : "off",
+    });
+    const uri = photo.path.startsWith("file://")
+      ? photo.path
+      : `file://${photo.path}`;
+    console.log("[Scan] takePhoto success", { uri });
+    await processImage(uri);
   };
 
   const pickImage = async () => {
@@ -124,13 +151,14 @@ export default function ScanScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <CameraView
+      <Camera
         ref={cameraRef}
         style={{ flex: 1 }}
-        facing="back"
-        flash={flash}
-        onMountError={(event) => {
-          const message = event?.message ?? "Terjadi kesalahan kamera";
+        device={device}
+        isActive={!loading}
+        photo
+        onError={(error: any) => {
+          const message = error?.message ?? "Terjadi kesalahan kamera";
           console.log("[Scan] CameraView mount error", { message });
           setCameraError(message);
         }}
