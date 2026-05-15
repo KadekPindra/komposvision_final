@@ -1,0 +1,959 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KomposVision API",
+    "description": "AI-powered composting assistant backend. Analyzes organic waste images and provides composting guidance.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/scan/analyze": {
+      "post": {
+        "tags": [
+          "Scan"
+        ],
+        "summary": "Analyze Scan",
+        "description": "Analyze a garbage image using Gemini Vision AI.\n\n1. Downloads the image from the provided Supabase Storage URL.\n2. Sends it to Gemini for material classification.\n3. Saves the result to the `scans` table.\n4. Returns the complete record for frontend display.",
+        "operationId": "analyze_scan_api_scan_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/message": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Send Message",
+        "description": "Send a message to the composting AI assistant.\n\n1. Forwards the user's message to Gemini for a response.\n2. Saves both user and bot messages to the `ai_chats` table.\n3. Returns the bot's reply.",
+        "operationId": "send_message_api_chat_message_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/progress/": {
+      "post": {
+        "tags": [
+          "Progress"
+        ],
+        "summary": "Start Compost Tracking",
+        "description": "Start tracking a new compost batch using results from a scan.",
+        "operationId": "start_compost_tracking_api_progress__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCompostBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompostItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Progress"
+        ],
+        "summary": "Get Progress",
+        "description": "List all compost batches for a user with their activities.\nReturns data shaped for the React Native CompostItem component.",
+        "operationId": "get_progress_api_progress__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID of the authenticated user",
+              "title": "User Id"
+            },
+            "description": "UUID of the authenticated user"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CompostItemResponse"
+                  },
+                  "title": "Response Get Progress Api Progress  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/progress/{batch_id}": {
+      "get": {
+        "tags": [
+          "Progress"
+        ],
+        "summary": "Get Progress Detail",
+        "description": "Get detailed progress for a single compost batch.",
+        "operationId": "get_progress_detail_api_progress__batch_id__get",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Batch Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID of the authenticated user",
+              "title": "User Id"
+            },
+            "description": "UUID of the authenticated user"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompostItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Progress"
+        ],
+        "summary": "Update Progress",
+        "description": "Update compost batch progress and optionally add a new activity.\n\n- Increments progress by `progressDelta` (clamped 0–100).\n- Updates status, nextAction, summary if provided.\n- Inserts a new activity timeline entry if `activity` is provided.",
+        "operationId": "update_progress_api_progress__batch_id__patch",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Batch Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCompostProgressRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Update Progress Api Progress  Batch Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Root",
+        "description": "Health check endpoint.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health Check",
+        "description": "Detailed health check.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActivityItem": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "time",
+          "description",
+          "is_active"
+        ],
+        "title": "ActivityItem",
+        "description": "A single timeline entry for a compost batch."
+      },
+      "ActivityPayload": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "isActive": {
+            "type": "boolean",
+            "title": "Isactive"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "time",
+          "description",
+          "isActive"
+        ],
+        "title": "ActivityPayload",
+        "description": "Activity data sent from the frontend update modal."
+      },
+      "AnalyzeScanRequest": {
+        "properties": {
+          "image_url": {
+            "type": "string",
+            "title": "Image Url",
+            "description": "Public URL of the garbage image in Supabase Storage"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "description": "UUID of the authenticated user"
+          },
+          "batch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id",
+            "description": "Optional UUID of an existing compost batch"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image_url",
+          "user_id"
+        ],
+        "title": "AnalyzeScanRequest",
+        "description": "Request body for the /api/scan/analyze endpoint."
+      },
+      "ChatMessageRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "description": "UUID of the authenticated user"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "User's chat message text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "message"
+        ],
+        "title": "ChatMessageRequest",
+        "description": "Request body for the /api/chat/message endpoint."
+      },
+      "ChatResponse": {
+        "properties": {
+          "user_message": {
+            "type": "string",
+            "title": "User Message"
+          },
+          "bot_message": {
+            "type": "string",
+            "title": "Bot Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_message",
+          "bot_message"
+        ],
+        "title": "ChatResponse",
+        "description": "Response returned after a chat message exchange."
+      },
+      "ChemicalAnalysis": {
+        "properties": {
+          "total_carbon_index": {
+            "type": "integer",
+            "title": "Total Carbon Index"
+          },
+          "total_nitrogen_index": {
+            "type": "integer",
+            "title": "Total Nitrogen Index"
+          },
+          "carbon_nitrogen_ratio_status": {
+            "type": "string",
+            "title": "Carbon Nitrogen Ratio Status"
+          },
+          "risk_factors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Risk Factors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_carbon_index",
+          "total_nitrogen_index",
+          "carbon_nitrogen_ratio_status",
+          "risk_factors"
+        ],
+        "title": "ChemicalAnalysis"
+      },
+      "CompositionItem": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "percent": {
+            "type": "integer",
+            "title": "Percent"
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "green",
+              "brown"
+            ],
+            "title": "Tone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "detail",
+          "percent",
+          "tone"
+        ],
+        "title": "CompositionItem",
+        "description": "A single material entry in the compost composition breakdown."
+      },
+      "CompostItemResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "current_ratio": {
+            "type": "string",
+            "title": "Current Ratio"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "temperature_c": {
+            "type": "number",
+            "title": "Temperature C"
+          },
+          "moisture": {
+            "type": "string",
+            "enum": [
+              "Rendah",
+              "Sedang",
+              "Tinggi"
+            ],
+            "title": "Moisture"
+          },
+          "next_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Action"
+          },
+          "eta_days": {
+            "type": "integer",
+            "title": "Eta Days"
+          },
+          "composition": {
+            "items": {
+              "$ref": "#/components/schemas/CompositionItem"
+            },
+            "type": "array",
+            "title": "Composition"
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "type": "array",
+            "title": "Activities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "current_ratio",
+          "name",
+          "status",
+          "progress",
+          "temperature_c",
+          "moisture",
+          "eta_days",
+          "composition",
+          "activities"
+        ],
+        "title": "CompostItemResponse",
+        "description": "Full compost batch DTO matching the React Native CompostItem type."
+      },
+      "CompostPrediction": {
+        "properties": {
+          "estimated_yield_grams": {
+            "type": "integer",
+            "title": "Estimated Yield Grams"
+          },
+          "days_to_mature": {
+            "type": "integer",
+            "title": "Days To Mature"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estimated_yield_grams",
+          "days_to_mature"
+        ],
+        "title": "CompostPrediction"
+      },
+      "CreateCompostBatchRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "image_url": {
+            "type": "string",
+            "title": "Image Url"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "ratio": {
+            "type": "string",
+            "title": "Ratio"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "temperature_c": {
+            "type": "number",
+            "title": "Temperature C"
+          },
+          "moisture": {
+            "type": "string",
+            "enum": [
+              "Rendah",
+              "Sedang",
+              "Tinggi"
+            ],
+            "title": "Moisture"
+          },
+          "next_action": {
+            "type": "string",
+            "title": "Next Action"
+          },
+          "eta_days": {
+            "type": "integer",
+            "title": "Eta Days"
+          },
+          "composition": {
+            "items": {
+              "$ref": "#/components/schemas/CompositionItem"
+            },
+            "type": "array",
+            "title": "Composition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "image_url",
+          "title",
+          "ratio",
+          "summary",
+          "temperature_c",
+          "moisture",
+          "next_action",
+          "eta_days",
+          "composition"
+        ],
+        "title": "CreateCompostBatchRequest",
+        "description": "Request body to start tracking compost progress from a scan."
+      },
+      "DetectedObject": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "condition": {
+            "type": "string",
+            "title": "Condition"
+          },
+          "est_mass_grams": {
+            "type": "integer",
+            "title": "Est Mass Grams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "condition",
+          "est_mass_grams"
+        ],
+        "title": "DetectedObject"
+      },
+      "ExpertAdvice": {
+        "properties": {
+          "warning": {
+            "type": "string",
+            "title": "Warning"
+          },
+          "action_plan": {
+            "type": "string",
+            "title": "Action Plan"
+          },
+          "additive_suggestion": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Additive Suggestion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "warning",
+          "action_plan",
+          "additive_suggestion"
+        ],
+        "title": "ExpertAdvice"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ScanResponse": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "batch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          },
+          "image_url": {
+            "type": "string",
+            "title": "Image Url"
+          },
+          "detected_objects": {
+            "items": {
+              "$ref": "#/components/schemas/DetectedObject"
+            },
+            "type": "array",
+            "title": "Detected Objects"
+          },
+          "chemical_analysis": {
+            "$ref": "#/components/schemas/ChemicalAnalysis"
+          },
+          "compost_prediction": {
+            "$ref": "#/components/schemas/CompostPrediction"
+          },
+          "expert_advice": {
+            "$ref": "#/components/schemas/ExpertAdvice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "image_url",
+          "detected_objects",
+          "chemical_analysis",
+          "compost_prediction",
+          "expert_advice"
+        ],
+        "title": "ScanResponse",
+        "description": "Full response returned after a successful scan analysis."
+      },
+      "UpdateCompostProgressRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "description": "UUID of the authenticated user"
+          },
+          "progressDelta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progressdelta",
+            "default": 0
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "nextAction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextaction"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "activity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivityPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "UpdateCompostProgressRequest",
+        "description": "Request body for PATCH /api/progress/{batch_id}."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
