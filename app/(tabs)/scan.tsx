@@ -48,7 +48,7 @@ export default function ScanScreen() {
   const model = useTensorflowModel(
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require("@/assets/model/yolo11m_contaminant.tflite"),
-    ["core-ml"],
+    [],
   );
   const activeModel = model.state === "loaded" ? model.model : undefined;
 
@@ -126,6 +126,23 @@ export default function ScanScreen() {
       model.state,
     );
   }, [device, model.state]);
+
+  useEffect(() => {
+    try {
+      const proto = frameOutput ? Object.getPrototypeOf(frameOutput) : null;
+      const keys = frameOutput ? Object.keys(frameOutput) : [];
+      console.log("[Scan] frameOutput details", {
+        __type: frameOutput && (frameOutput as any).__type,
+        constructorName: frameOutput
+          ? (frameOutput as any).constructor?.name
+          : null,
+        proto: proto,
+        keys: keys,
+      });
+    } catch (e) {
+      console.log("[Scan] frameOutput inspect error", e);
+    }
+  }, [frameOutput]);
 
   // ── conditional renders ────────────────────────────────────────────────────
   if (!hasPermission) {
