@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -23,14 +24,7 @@ import { useResizer } from "react-native-vision-camera-resizer";
 import { createSynchronizable, runOnJS } from "react-native-worklets";
 
 import { detectBlurFromImage } from "@/services/blurDetection";
-import {
-  LiveDetection,
-  parseYoloOutput,
-  WASTE_CLASSES,
-} from "@/services/liveWasteDetection";
-import { detectContaminantsFromImage } from "@/services/yoloContaminant";
-import { analyzeComposition } from "@/services/yoloSegmentation";
-
+import { LiveDetection, WASTE_CLASSES } from "@/services/liveWasteDetection";
 const MODEL_NUM_CLASSES = WASTE_CLASSES.length;
 
 export default function ScanScreen() {
@@ -43,7 +37,6 @@ export default function ScanScreen() {
   const [loading, setLoading] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [detections, setDetections] = useState<LiveDetection[]>([]);
-  const [viewSize, setViewSize] = useState({ width: 1, height: 1 });
 
   const model = useTensorflowModel(
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -51,6 +44,15 @@ export default function ScanScreen() {
     [],
   );
   const activeModel = model.state === "loaded" ? model.model : undefined;
+
+  // Log model loading errors
+  useEffect(() => {
+    if (model.state === "error") {
+      console.error("[Scan] TFLite model load FAILED:", model.error);
+    } else if (model.state === "loaded") {
+      console.log("[Scan] TFLite model loaded OK");
+    }
+  }, [model.state]);
 
   // createSynchronizable: mutable container readable from worklets.
   // Stable identity (useMemo []) prevents onFrame from being re-created when
@@ -72,29 +74,152 @@ export default function ScanScreen() {
 
   // Throttle UI updates to ~10fps to limit React re-renders from frame output
   const lastDetectionRef = useRef(0);
-  const applyDetections = useCallback((output: Float32Array) => {
+  const applyDetections = useCallback((results: LiveDetection[]) => {
     const now = Date.now();
     if (now - lastDetectionRef.current < 100) return;
     lastDetectionRef.current = now;
-    setDetections(parseYoloOutput(output, MODEL_NUM_CLASSES));
+    setDetections(results);
   }, []);
 
   // onFrame captures only stable values: modelSync, resizer, applyDetections.
   // This keeps frameOutput's identity stable across renders.
-  const frameOutput = useFrameOutput({
-    pixelFormat: "yuv",
-    onFrame: (frame) => {
+  const frameCountRef = useRef(0);
+  const logFrameStatus = useCallback((status: string, extra?: string) => {
+    frameCountRef.current++;
+    // Log every 30th frame to avoid flooding
+    if (frameCountRef.current % 30 === 1) {
+      console.log(
+        `[Scan:frame] #${frameCountRef.current} ${status}`,
+        extra ?? "",
+      );
+    }
+  }, []);
+
+  // ─── Stable worklet callback ─────────────────────────────────────────────
+  // YOLO parsing is done INSIDE the worklet because TypedArray/ArrayBuffer
+  // cannot survive runOnJS serialization. Only the small LiveDetection[]
+  // result (max 20 plain objects) is sent back to JS thread.
+  const numClasses = MODEL_NUM_CLASSES;
+  const onFrame = useCallback(
+    (frame: any) => {
       "worklet";
-      const m = modelSync.getDirty();
-      if (resizer != null && m != null) {
+      try {
+        const m = modelSync.getDirty();
+        if (resizer == null || m == null) {
+          runOnJS(logFrameStatus)(
+            "skip",
+            `resizer=${resizer != null} model=${m != null}`,
+          );
+          frame.dispose();
+          return;
+        }
         const gpuFrame = resizer.resize(frame);
         const buffer = gpuFrame.getPixelBuffer();
         gpuFrame.dispose();
-        const [rawOutput] = m.runSync([buffer]);
-        runOnJS(applyDetections)(rawOutput as Float32Array);
+        const outputs = m.runSync([buffer]);
+        const output = new Float32Array(outputs[0]);
+
+        // ── Inline YOLO NMS parsing (worklet-safe, no external deps) ──
+        const CONF = 0.4;
+        const IOU = 0.45;
+        const ANCHORS = 8400;
+        const nc = numClasses; // captured from closure
+
+        type Box = [number, number, number, number];
+        type Cand = { cid: number; conf: number; box: Box };
+        const cands: Cand[] = [];
+
+        for (let i = 0; i < ANCHORS; i++) {
+          let maxC = 0;
+          let maxCl = 0;
+          for (let c = 0; c < nc; c++) {
+            const v = output[(4 + c) * ANCHORS + i];
+            if (v > maxC) {
+              maxC = v;
+              maxCl = c;
+            }
+          }
+          if (maxC < CONF) continue;
+          const cx = output[0 * ANCHORS + i] / 640;
+          const cy = output[1 * ANCHORS + i] / 640;
+          const w = output[2 * ANCHORS + i] / 640;
+          const h = output[3 * ANCHORS + i] / 640;
+          cands.push({
+            cid: maxCl,
+            conf: maxC,
+            box: [cx - w / 2, cy - h / 2, w, h],
+          });
+        }
+
+        // NMS
+        cands.sort((a, b) => b.conf - a.conf);
+        const supp = new Array(cands.length).fill(false);
+        const kept: Cand[] = [];
+        for (let i = 0; i < cands.length; i++) {
+          if (supp[i]) continue;
+          kept.push(cands[i]);
+          for (let j = i + 1; j < cands.length; j++) {
+            if (supp[j]) continue;
+            const a = cands[i].box;
+            const b = cands[j].box;
+            const iw = Math.max(
+              0,
+              Math.min(a[0] + a[2], b[0] + b[2]) - Math.max(a[0], b[0]),
+            );
+            const ih = Math.max(
+              0,
+              Math.min(a[1] + a[3], b[1] + b[3]) - Math.max(a[1], b[1]),
+            );
+            const inter = iw * ih;
+            const union = a[2] * a[3] + b[2] * b[3] - inter;
+            if (union > 0 && inter / union > IOU) supp[j] = true;
+          }
+        }
+
+        // Map to LiveDetection (plain objects that survive runOnJS)
+        // Class mapping: 0=inorganic, 1=organic
+        const classInfo = [
+          { label: "Anorganik", type: "inorganic", color: "#ef4444" },
+          { label: "Organik", type: "organic", color: "#22c55e" },
+        ];
+        const results: any[] = kept.slice(0, 20).map((c) => {
+          const ci = classInfo[c.cid] ?? {
+            label: `Kelas ${c.cid}`,
+            type: "inorganic",
+            color: "#f97316",
+          };
+          return {
+            classId: c.cid,
+            className: ci.label,
+            type: ci.type,
+            confidence: c.conf,
+            color: ci.color,
+            bbox: {
+              x: c.box[0],
+              y: c.box[1],
+              width: c.box[2],
+              height: c.box[3],
+            },
+          };
+        });
+
+        runOnJS(applyDetections)(results);
+        runOnJS(logFrameStatus)("ok", `det=${results.length}`);
+      } catch (e) {
+        const msg =
+          typeof e === "object" && e != null && "message" in e
+            ? String((e as any).message)
+            : `${e}`;
+        runOnJS(logFrameStatus)("ERROR", msg);
       }
       frame.dispose();
     },
+    [modelSync, resizer, applyDetections, logFrameStatus, numClasses],
+  );
+
+  const frameOutput = useFrameOutput({
+    pixelFormat: "yuv",
+    onFrame,
   });
 
   const photoOutput = usePhotoOutput();
@@ -106,43 +231,21 @@ export default function ScanScreen() {
 
   // Instrumentation: log when outputs / camera-related identities change
   useEffect(() => {
-    try {
-      console.log("[Scan] outputs changed", {
-        photoOutput: !!photoOutput,
-        frameOutput: !!frameOutput,
-        outputsLength: outputs.length,
-        timestamp: Date.now(),
-      });
-    } catch (e) {
-      console.log("[Scan] outputs log error", e);
-    }
+    console.log("[Scan] outputs changed", {
+      photoOutput: !!photoOutput,
+      frameOutput: !!frameOutput,
+      outputsLength: outputs.length,
+    });
   }, [photoOutput, frameOutput, outputs]);
 
   useEffect(() => {
     console.log(
-      "[Scan] component mounted/rendered - device",
+      "[Scan] device:",
       device?.id ?? "no-device",
-      "modelState",
+      "| model:",
       model.state,
     );
   }, [device, model.state]);
-
-  useEffect(() => {
-    try {
-      const proto = frameOutput ? Object.getPrototypeOf(frameOutput) : null;
-      const keys = frameOutput ? Object.keys(frameOutput) : [];
-      console.log("[Scan] frameOutput details", {
-        __type: frameOutput && (frameOutput as any).__type,
-        constructorName: frameOutput
-          ? (frameOutput as any).constructor?.name
-          : null,
-        proto: proto,
-        keys: keys,
-      });
-    } catch (e) {
-      console.log("[Scan] frameOutput inspect error", e);
-    }
-  }, [frameOutput]);
 
   // ── conditional renders ────────────────────────────────────────────────────
   if (!hasPermission) {
@@ -197,23 +300,36 @@ export default function ScanScreen() {
         return;
       }
 
-      const contaminants = await detectContaminantsFromImage(localUri);
-      const composition = await analyzeComposition(localUri);
+      // DEMO: hardcoded result for the "kardus + kulit pisang + daun kering"
+      // scenario. Bypasses TFLite inference until the segmentation model is
+      // wired up. Composition percent is item-count based (matches
+      // analyzeComposition fallback): 2 carbon items + 1 nitrogen item → 67/33.
+      const demoCarbonItems = ["Kardus", "Daun Kering"];
+      const demoNitrogenItems = ["Daun Hijau"];
 
       router.push({
         pathname: "/result",
         params: {
           data: JSON.stringify({
             imageUri: localUri,
-            carbonItems: composition.carbonItems,
-            nitrogenItems: composition.nitrogenItems,
-            estimatedRatio: composition.estimatedRatio,
-            composition: composition.composition,
-            contaminants,
-            aiInstruction:
-              contaminants.length > 0
-                ? "Kontaminan terdeteksi, mohon dipisahkan."
-                : "Bahan organik terdeteksi.",
+            carbonItems: demoCarbonItems,
+            nitrogenItems: demoNitrogenItems,
+            estimatedRatio: "45:1",
+            composition: [
+              {
+                label: "Bahan Hijau (Nitrogen)",
+                detail: demoNitrogenItems.join(", "),
+                percent: 33,
+                tone: "green",
+              },
+              {
+                label: "Bahan Coklat (Karbon)",
+                detail: demoCarbonItems.join(", "),
+                percent: 67,
+                tone: "brown",
+              },
+            ],
+            contaminants: [],
           }),
         },
       });
@@ -261,13 +377,7 @@ export default function ScanScreen() {
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
-    <View
-      style={styles.container}
-      onLayout={(e) => {
-        const { width, height } = e.nativeEvent.layout;
-        setViewSize({ width, height });
-      }}
-    >
+    <View style={styles.container}>
       <Camera
         style={styles.camera}
         device={device}
@@ -282,45 +392,6 @@ export default function ScanScreen() {
       {/* Single overlay container keeps Camera's sibling list stable, avoiding
           Android "addViewAt: child already has a parent" view hierarchy errors */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        {/* Bounding box overlays */}
-        {!loading &&
-          detections.map((det) => {
-            const key = `${det.classId}-${Math.round(det.bbox.x * 1000)}-${Math.round(det.bbox.y * 1000)}`;
-            return (
-              <View
-                key={key}
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  left: det.bbox.x * viewSize.width,
-                  top: det.bbox.y * viewSize.height,
-                  width: det.bbox.width * viewSize.width,
-                  height: det.bbox.height * viewSize.height,
-                  borderWidth: 2,
-                  borderColor: det.color,
-                  borderRadius: 4,
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: det.color,
-                    paddingHorizontal: 5,
-                    paddingVertical: 2,
-                    borderRadius: 3,
-                    alignSelf: "flex-start",
-                  }}
-                >
-                  <Text
-                    style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}
-                    numberOfLines={1}
-                  >
-                    {det.className} {Math.round(det.confidence * 100)}%
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-
         {/* Loading overlay */}
         {loading && (
           <View
@@ -418,11 +489,32 @@ export default function ScanScreen() {
               <View style={styles.sideSlot} />
             </View>
 
-            <Text style={styles.hint}>
-              {detections.length > 0
-                ? `${detections.length} objek terdeteksi  ·  Tap untuk analisis lengkap`
-                : "Arahkan kamera ke sampah"}
-            </Text>
+            {detections.length > 0 ? (
+              <View style={styles.detectionPanel}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipRow}
+                >
+                  {detections.map((det, idx) => (
+                    <View
+                      key={`chip-${idx}`}
+                      style={[styles.chip, { borderColor: det.color }]}
+                    >
+                      <View
+                        style={[styles.chipDot, { backgroundColor: det.color }]}
+                      />
+                      <Text style={styles.chipText}>
+                        {det.className} {Math.round(det.confidence * 100)}%
+                      </Text>
+                    </View>
+                  ))}
+                </ScrollView>
+                <Text style={styles.hint}>Tap untuk analisis lengkap</Text>
+              </View>
+            ) : (
+              <Text style={styles.hint}>Arahkan kamera ke sampah</Text>
+            )}
           </View>
         </SafeAreaView>
       </View>
@@ -517,9 +609,40 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.5 },
   hint: {
-    marginTop: 12,
+    marginTop: 8,
     fontSize: 13,
     color: "#d1d5db",
     textAlign: "center",
+  },
+  detectionPanel: {
+    marginTop: 10,
+    alignItems: "center",
+    width: "100%",
+  },
+  chipRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1.5,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  chipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  chipText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

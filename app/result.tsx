@@ -242,13 +242,13 @@ export default function ResultScreen() {
                 size={18}
                 color={isBalanced ? "#166534" : "#991b1b"}
               />
-              <Text
+              {/* <Text
                 className={`font-semibold ml-2 ${
                   isBalanced ? "text-green-800" : "text-red-800"
                 }`}
               >
                 {message}
-              </Text>
+              </Text> */}
             </View>
           </View>
           <View className="border-t border-gray-400 w-full flex my-8" />

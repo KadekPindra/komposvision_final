@@ -64,6 +64,35 @@ const mapCompostItem = (item: any, activities: any[]): CompostItem => ({
   })),
 });
 
+// Hardcoded system recommendation engine for manual progress updates.
+// Picks a next-action suggestion based on keywords in what the user reports.
+const pickManualRecommendation = (
+  title: string,
+  description: string,
+  material: string,
+): string => {
+  const text = `${title} ${description} ${material}`.toLowerCase();
+  if (/(siram|air|basah|lembap|lembab)/.test(text)) {
+    return "Tutup tumpukan dengan daun kering tipis dan aduk untuk aerasi agar tidak terlalu basah.";
+  }
+  if (/(aduk|balik|aerasi|putar)/.test(text)) {
+    return "Cek suhu dan kelembapan 2-3 hari ke depan; ulangi aerasi bila bagian dalam masih panas.";
+  }
+  if (/(sayur|buah|kulit|sisa makan|rumput|hijau|nitrogen)/.test(text)) {
+    return "Tambahkan bahan coklat (daun kering atau kardus) untuk seimbangkan rasio C/N.";
+  }
+  if (/(daun|kardus|kayu|kering|coklat|karton|serbuk|karbon)/.test(text)) {
+    return "Tambahkan sedikit bahan hijau atau siram tipis bila tumpukan terasa kering.";
+  }
+  if (/(panen|matang|jadi|selesai|siap)/.test(text)) {
+    return "Saring kompos yang sudah matang; sisihkan bagian kasar untuk siklus berikutnya.";
+  }
+  if (/(bau|bau busuk|amoniak)/.test(text)) {
+    return "Tambahkan bahan coklat dan tingkatkan aerasi untuk kurangi bau.";
+  }
+  return "Pantau suhu dan kelembapan; lakukan aerasi rutin 2-3 hari ke depan.";
+};
+
 const formatActivityTime = (rawTime: string | undefined): string => {
   if (!rawTime) return "";
   const s = rawTime.trim();
@@ -298,7 +327,7 @@ const DetailProgressScreen = () => {
           record.description = update.activity.description;
           record.isActive = true;
           record.timeLabel = update.activity.time;
-          record.createdAt = new Date().toISOString();
+          record._raw.created_at = Date.now();
         });
       });
 
@@ -346,6 +375,12 @@ const DetailProgressScreen = () => {
       return;
     }
 
+    const systemRecommendation = pickManualRecommendation(
+      activityTitle,
+      baseDesc,
+      materialNameValue,
+    );
+
     setIsUpdating(true);
     setIsUpdateOpen(false);
     try {
@@ -360,6 +395,7 @@ const DetailProgressScreen = () => {
         );
         await batch.update((record: any) => {
           record.progress = nextProgress;
+          record.nextAction = systemRecommendation;
           record.lastUpdatedFormatted = new Date().toLocaleString("id-ID");
         });
 
@@ -369,11 +405,15 @@ const DetailProgressScreen = () => {
           record.description = activityDesc;
           record.isActive = true;
           record.timeLabel = "Baru saja";
-          record.createdAt = new Date().toISOString();
+          record._raw.created_at = Date.now();
         });
       });
 
       await fetchDetail();
+      Alert.alert(
+        "Update tersimpan",
+        `Rekomendasi sistem:\n\n${systemRecommendation}`,
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Terjadi kesalahan";
