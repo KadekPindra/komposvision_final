@@ -1,6 +1,8 @@
 import CompositionText from "@/components/composition";
 import PageHeader from "@/components/PageHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
+import { database } from "@/database";
+import { generateCompostAdvice } from "@/utils/compostAdvisor";
 import {
   AntDesign,
   Entypo,
@@ -24,30 +26,23 @@ import {
 } from "react-native";
 
 type AnalyzeResult = {
-  id?: string | null;
-  user_id: string;
-  batch_id?: string | null;
-  image_url: string;
-  detected_objects: {
-    item: string;
-    condition: string;
-    est_mass_grams: number;
+  imageUri: string;
+  carbonItems: string[];
+  nitrogenItems: string[];
+  estimatedRatio: string;
+  composition: {
+    label: string;
+    detail: string;
+    percent: number;
+    tone: "green" | "brown";
   }[];
-  chemical_analysis: {
-    total_carbon_index: number;
-    total_nitrogen_index: number;
-    carbon_nitrogen_ratio_status: string;
-    risk_factors: string[];
-  };
-  compost_prediction: {
-    estimated_yield_grams: number;
-    days_to_mature: number;
-  };
-  expert_advice: {
-    warning: string;
-    action_plan: string;
-    additive_suggestion: string[];
-  };
+  contaminants: {
+    classId: number;
+    className: string;
+    confidence: number;
+    bbox: [number, number, number, number];
+  }[];
+  aiInstruction: string;
 };
 
 export default function ResultScreen() {
@@ -58,10 +53,6 @@ export default function ResultScreen() {
   const [isAdviceExpanded, setIsAdviceExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
-  const apiBaseUrl = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").replace(
-    /\/+$/,
-    "",
-  );
 
   if (
     Platform.OS === "android" &&
@@ -77,7 +68,7 @@ export default function ResultScreen() {
 
     try {
       const parsed = JSON.parse(data) as AnalyzeResult;
-      if (parsed?.detected_objects) {
+      if (parsed?.imageUri) {
         setResult(parsed);
       } else {
         console.log("[Result] unsupported scan result shape", { parsed });
@@ -88,7 +79,7 @@ export default function ResultScreen() {
   }, [data]);
 
   useEffect(() => {
-    const imageUrl = result?.image_url ?? (image as string | undefined);
+    const imageUrl = result?.imageUri ?? (image as string | undefined);
     if (!imageUrl) {
       return;
     }
@@ -114,17 +105,32 @@ export default function ResultScreen() {
     );
   }
 
-  const imageUrl = result.image_url;
-  const carbonValue = result.chemical_analysis.total_carbon_index;
-  const nitrogenValue = result.chemical_analysis.total_nitrogen_index;
-  const isBalanced =
-    nitrogenValue > 0 &&
-    result.chemical_analysis.carbon_nitrogen_ratio_status
-      .toLowerCase()
-      .includes("balanced");
-  const message = isBalanced
-    ? "Komposisi seimbang"
-    : result.chemical_analysis.carbon_nitrogen_ratio_status;
+  const imageUrl = result.imageUri;
+  const carbonEntry = result.composition.find((item) => item.tone === "brown");
+  const nitrogenEntry = result.composition.find(
+    (item) => item.tone === "green",
+  );
+  const carbonValue = carbonEntry?.percent ?? 50;
+  const nitrogenValue = nitrogenEntry?.percent ?? 50;
+  const ratioParsed = Number(result.estimatedRatio.split(":")[0]);
+  const ratioValue = Number.isFinite(ratioParsed) ? ratioParsed : 0;
+  const isBalanced = ratioValue >= 20 && ratioValue <= 30;
+  const message = isBalanced ? "Komposisi seimbang" : result.aiInstruction;
+  const allItems = [...result.carbonItems, ...result.nitrogenItems];
+  const advice = generateCompostAdvice({
+    ratio: result.estimatedRatio || "25:1",
+    carbonPercent: carbonValue,
+    nitrogenPercent: nitrogenValue,
+    batchAgeDays: 3,
+    temperatureC: 35,
+    moisture: "Sedang",
+  });
+  const suggestions = isBalanced
+    ? ["Pertahankan rasio saat ini"]
+    : ratioValue > 30
+      ? ["Tambah bahan hijau (sayur, rumput)"]
+      : ["Tambah bahan coklat (daun kering, kardus)"];
+  const estimatedYieldKg = Math.max(1, Math.round(allItems.length / 2));
 
   const getItemIcon = (itemName: string) => {
     const name = itemName.toLowerCase();
@@ -166,21 +172,26 @@ export default function ResultScreen() {
             Daftar Bahan
           </Text>
           <View className="mt-4 gap-2">
-            {result.detected_objects.map((obj, index) => (
+            {allItems.length === 0 && (
+              <View className="flex-row items-center gap-3 border border-gray-200 rounded-lg px-4 py-3">
+                <MaterialCommunityIcons name="leaf" size={18} color="#166534" />
+                <Text className="font-semibold flex-1">
+                  Belum ada bahan terdeteksi
+                </Text>
+              </View>
+            )}
+            {allItems.map((item, index) => (
               <View
-                key={`${obj.item}-${index}`}
+                key={`${item}-${index}`}
                 className="flex-row items-center gap-3 border border-gray-200 rounded-lg px-4 py-3"
               >
                 <MaterialCommunityIcons
-                  name={getItemIcon(obj.item).icon as never}
+                  name={getItemIcon(item).icon as never}
                   size={18}
-                  color={getItemIcon(obj.item).color}
+                  color={getItemIcon(item).color}
                 />
                 <Text className="font-semibold flex-1">
-                  {obj.item.charAt(0).toUpperCase() + obj.item.slice(1)}
-                </Text>
-                <Text className="text-sm font-semibold text-right bg-gray-200 text-gray-600 px-3 py-1 rounded-full">
-                  {obj.est_mass_grams} g
+                  {item.charAt(0).toUpperCase() + item.slice(1)}
                 </Text>
               </View>
             ))}
@@ -231,13 +242,13 @@ export default function ResultScreen() {
                 size={18}
                 color={isBalanced ? "#166534" : "#991b1b"}
               />
-              <Text
+              {/* <Text
                 className={`font-semibold ml-2 ${
                   isBalanced ? "text-green-800" : "text-red-800"
                 }`}
               >
                 {message}
-              </Text>
+              </Text> */}
             </View>
           </View>
           <View className="border-t border-gray-400 w-full flex my-8" />
@@ -308,10 +319,10 @@ export default function ResultScreen() {
           {isAdviceExpanded && (
             <View className="mt-4">
               <Text className="text-gray-600 font-semibold mb-3">
-                {result.expert_advice.action_plan}
+                {advice.nextAction}
               </Text>
               <View className="gap-2">
-                {result.expert_advice.additive_suggestion.map((item, index) => (
+                {suggestions.map((item, index) => (
                   <View
                     key={`${item}-${index}`}
                     className="flex-row items-center gap-4 px-4 py-2 bg-white rounded-xl border border-gray-300"
@@ -319,9 +330,7 @@ export default function ResultScreen() {
                     <View className="items-center justify-center">
                       <AntDesign name="plus-circle" size={18} color="black" />
                     </View>
-                    <Text className="text-gray-700 flex-1">
-                      Tambahkan {item.charAt(0).toUpperCase() + item.slice(1)}
-                    </Text>
+                    <Text className="text-gray-700 flex-1">{item}</Text>
                   </View>
                 ))}
               </View>
@@ -341,7 +350,7 @@ export default function ResultScreen() {
                 Prediksi Berat
               </Text>
               <Text className="mt-2 font-bold text-2xl">
-                ~ {result.compost_prediction.estimated_yield_grams / 1000}kg
+                ~ {estimatedYieldKg}kg
               </Text>
             </View>
             <View className="flex-1 items-center justify-center border border-gray-200 rounded-lg px-4 py-3">
@@ -350,7 +359,7 @@ export default function ResultScreen() {
                 Waktu Matang
               </Text>
               <Text className="mt-2 font-bold text-2xl">
-                ~ {result.compost_prediction.days_to_mature} hari
+                ~ {advice.etaDays} hari
               </Text>
             </View>
           </View>
@@ -404,111 +413,76 @@ export default function ResultScreen() {
           <TouchableOpacity
             disabled={saving}
             onPress={async () => {
-              if (!apiBaseUrl) {
-                Alert.alert("Error", "API base URL belum dikonfigurasi.");
-                return;
-              }
-
               setSaving(true);
               try {
-                if (!result.batch_id) {
-                  const totalItems = result.detected_objects.length || 1;
-                  const basePercent = Math.floor(100 / totalItems);
-                  let remainder = 100 - basePercent * totalItems;
-                  const compositionSource =
-                    result.detected_objects.length > 0
-                      ? result.detected_objects
-                      : [
-                          {
-                            item: "Hasil scan",
-                            condition: "-",
-                            est_mass_grams: 0,
-                          },
-                        ];
-                  const composition = compositionSource.map((obj) => {
-                    const percent = basePercent + (remainder > 0 ? 1 : 0);
-                    remainder = Math.max(0, remainder - 1);
-                    const name = obj.item.toLowerCase();
-                    const tone =
-                      name.includes("sayur") ||
-                      name.includes("buah") ||
-                      name.includes("rumput") ||
-                      name.includes("kopi")
-                        ? "green"
-                        : "brown";
-                    return {
-                      label: obj.item,
-                      detail: obj.condition,
-                      percent,
-                      tone,
-                    };
-                  });
-
-                  const ratio = `${carbonValue}:${nitrogenValue}`;
-                  const createResponse = await fetch(
-                    `${apiBaseUrl}/api/progress/`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        user_id: result.user_id,
-                        image_url: result.image_url,
-                        title: result.detected_objects[0]?.item ?? "Hasil Scan",
-                        ratio,
-                        summary: result.expert_advice.warning,
-                        temperatureC: 35,
-                        moisture: "Sedang",
-                        nextAction: result.expert_advice.action_plan,
-                        etaDays: result.compost_prediction.days_to_mature,
-                        composition,
-                      }),
-                    },
-                  );
-
-                  if (!createResponse.ok) {
-                    const errorText = await createResponse.text();
-                    throw new Error(
-                      errorText ||
-                        `Gagal membuat batch (HTTP ${createResponse.status})`,
-                    );
+                await database.write(async () => {
+                  const profiles = await database
+                    .get("profiles")
+                    .query()
+                    .fetch();
+                  let profileId = profiles[0]?.id;
+                  if (!profileId) {
+                    const profile = await database
+                      .get("profiles")
+                      .create((record: any) => {
+                        record.fullName = "Pengguna Offline";
+                        record.totalCompostKg = 0;
+                        record.createdAt = Date.now();
+                      });
+                    profileId = profile.id;
                   }
 
-                  const created = await createResponse.json();
-                  setResult((prev) =>
-                    prev ? { ...prev, batch_id: created.id } : prev,
-                  );
-                  Alert.alert("Berhasil", "Progress berhasil disimpan.");
-                  return;
-                }
+                  const batch = await database
+                    .get("compost_batches")
+                    .create((record: any) => {
+                      record.userId = profileId;
+                      record.title = allItems[0] ?? "Hasil Scan";
+                      record.status = "Aktif";
+                      record.imageUri = result.imageUri;
+                      record.ratio = result.estimatedRatio || "-";
+                      record.progress = 10;
+                      record.summary = advice.summary;
+                      record.temperatureC = 35;
+                      record.moisture = "Sedang";
+                      record.nextAction = advice.nextAction;
+                      record.etaDays = advice.etaDays;
+                      record.composition = result.composition;
+                      record.lastUpdatedFormatted = new Date().toLocaleString(
+                        "id-ID",
+                      );
+                    });
 
-                const response = await fetch(
-                  `${apiBaseUrl}/api/progress/${result.batch_id}/`,
+                  await database.get("scans").create((record: any) => {
+                    record.userId = profileId;
+                    record.batchId = batch.id;
+                    record.imageUri = result.imageUri;
+                    record.carbonItems = result.carbonItems;
+                    record.nitrogenItems = result.nitrogenItems;
+                    record.estimatedRatio = result.estimatedRatio;
+                    record.aiInstruction = result.aiInstruction ?? "";
+                    record.createdAt = Date.now();
+                  });
+
+                  await database
+                    .get("compost_activities")
+                    .create((record: any) => {
+                      record.batchId = batch.id;
+                      record.title = "Hasil scan disimpan";
+                      record.description =
+                        "Hasil analisis ditambahkan dari halaman result.";
+                      record.isActive = true;
+                      record.timeLabel = new Date().toLocaleString("id-ID");
+                      record.createdAt = Date.now();
+                    });
+                });
+
+                Alert.alert("Berhasil", "Progress berhasil disimpan.", [
                   {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      user_id: result.user_id,
-                      progressDelta: 0,
-                      status: "Tersimpan",
-                      nextAction: result.expert_advice.action_plan,
-                      summary: result.expert_advice.warning,
-                      activity: {
-                        title: "Hasil scan disimpan",
-                        time: new Date().toLocaleString("id-ID"),
-                        description:
-                          "Hasil analisis ditambahkan dari halaman result.",
-                        isActive: true,
-                      },
-                    }),
+                    text: "Lihat Progress",
+                    onPress: () => router.replace("/(tabs)/progress"),
                   },
-                );
-
-                if (!response.ok) {
-                  const errorText = await response.text();
-                  throw new Error(errorText || "Gagal menyimpan progress");
-                }
-
-                Alert.alert("Berhasil", "Progress berhasil disimpan.");
+                  { text: "OK", style: "cancel" },
+                ]);
               } catch (error) {
                 const message =
                   error instanceof Error ? error.message : "Terjadi kesalahan";

@@ -1,0 +1,53 @@
+05-07 16:03:51.016   610  3059 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+05-07 16:03:51.488  8845  8865 E ReactNativeJS: [Error: supabaseUrl is required.]
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: FATAL EXCEPTION: mqt_v_native
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: Process: com.anonymous.komposvision, PID: 8845
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: com.facebook.react.common.JavascriptException: Error: supabaseUrl is required., stack:
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: validateSupabaseUrl@1:1612684
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: SupabaseClient@1:1614181
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: createClient@1:1616601
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: anonymous@1:1608122
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: loadModuleImplementation@1:47043
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: guardedLoadModule@1:46566
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: metroRequire@1:46076
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: anonymous@1:1594662
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: loadModuleImplementation@1:47043
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: guardedLoadModule@1:46522
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: metroRequire@1:46076
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: get@1:1210489
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: metroContext@1:1210329
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: loadRoute@1:1529669
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: getQualifiedRouteComponent@1:1409066
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: getComponent@1:1410070
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: SceneView@1:1299084
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: renderWithHooks@1:234850
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: updateFunctionComponent@1:253618
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: beginWork@1:261453
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: performUnitOfWork@1:280102
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: workLoopSync@1:279110
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: renderRootSync@1:278942
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: performWorkOnRoot@1:276368
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: performSyncWorkOnRoot@1:230437
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: flushSyncWorkAcrossRoots_impl@1:229328
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: processRootScheduleInMicrotask@1:229688
+05-07 16:03:51.490  8845  8866 E AndroidRuntime: anonymous@1:230532
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at com.facebook.react.modules.core.ExceptionsManagerModule.reportException(ExceptionsManagerModule.kt:52)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at com.facebook.jni.NativeRunnable.run(Native Method)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at android.os.Handler.handleCallback(Handler.java:959)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at android.os.Handler.dispatchMessage(Handler.java:100)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at com.facebook.react.bridge.queue.MessageQueueThreadHandler.dispatchMessage(MessageQueueThreadHandler.kt:21)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at android.os.Looper.loopOnce(Looper.java:232)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at android.os.Looper.loop(Looper.java:317)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion.startNewBackgroundThread$lambda$1(MessageQueueThreadImpl.kt:175)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion.$r8$lambda$ldnZnqelhYFctGaUKkOKYj5rxo4(Unknown Source:0)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+05-07 16:03:51.490  8845  8866 E AndroidRuntime:        at java.lang.Thread.run(Thread.java:1012)
+05-07 16:03:51.518  8845  8865 E ReactNativeJS: [Error: supabaseUrl is required.]
+05-07 16:03:51.544  8845  8865 E ReactNativeJS: { [TypeError: Cannot read property 'ErrorBoundary' of undefined]
+05-07 16:03:51.544  8845  8865 E ReactNativeJS:   componentStack: '\n    at SceneView (address at index.android.bundle:1:1298468)\n    at NavigationProvider (address at index.android.bundle:1:1259102)\n    at RCTView (<anonymous>)\n    at View (address at index.android.bundle:1:475847)\n    at RCTView (<anonymous>)\n    at View (address at index.android.bundle:1:475847)\n    at CssInterop.View (address at index.android.bundle:1:480463)\n    at Animated(View) (address at index.android.bundle:1:565353)\n    at Background (address at index.android.bundle:1:1215652)\n    at Screen (address at index.android.bundle:1:1368691)\n    at RNSScreen (<anonymous>)\n    at Animated(Anonymous) (address at index.android.bundle:1:565353)\n    at Suspender (address at index.android.bundle:1:1434556)\n    at Suspense (<anonymous>)\n    at Freeze (address at index.android.bundle:1:1434617)\n    at DelayedFreeze (address at index.android.bundle:1:1434198)\n    at InnerScreen (address at index.android.bundle:1:1431910)\n    at anonymous (address at index.android.bundle:1:1433597)\n    at MaybeScreen (address at index.android.bundle:1:1427459)\n    at RNSScreenContainer (<anonymous>)\n    at ScreenContainer (address at index.android.bundle:1:1441153)\n    at MaybeScreenContainer (address at index.android.bundle:1:1427622)\n    at RCTView (<anonymous>)\n    at View (address at index.android.bundle:1:475847)\n    at FrameSizeProvider (address at index.android.bundle:1:1356441)\n    at SafeAreaProviderCompat (address at index.android.bundle:1:1367895)\n    at BottomTabView (address at index.android.bundle:1:1415440)\n    at PreventRemoveProvider (address at index.android.bundle:1:1283444)\n    at NavigationStateListenerProvider (address at index.android.bundle:1:1306057)\n    at NavigationContent (address at index.android.bundle:1:1295629)\n    at anonymous (address at index.android.bundle:1:1295532)\n    at BottomTabNavigator (address at index.android.bundle:1:1414524)\n    at anonymous (address at index.android.bundle:1:1401202)\n    at TabLayout (address at index.android.bundle:1:1210979)\n    at Suspense (<anonymous>)\n    at Route (address at index.android.bundle:1:1402279)\n    at BaseRoute (address at index.android.bundle:1:1409171)\n    at StaticContainer (address at index.android.bundle:1:1300733)\n    at EnsureSingleNavigator (address at index.android.bundle:1:1243089)\n    at SceneView (address at index.android.bundle:1:1298468)\n    at NavigationProvider (address at index.android.bundle:1:1259102)\n    at RNSScreenContentWrapper (<anonymous>)\n    at ScreenContentWrapper (<anonymous>)\n    at DebugContainer (<anonymous>)\n    at RNSScreen (<anonymous>)\n    at Animated(Anonymous) (address at index.android.bundle:1:565353)\n    at Suspender (address at index.android.bundle:1:1434556)\n    at Suspense (<anonymous>)\n    at Freeze (address at index.android.bundle:1:1434617)\n    at DelayedFreeze (address at index.android.bundle:1:1434198)\n    at InnerScreen (address at index.android.bundle:1:1431910)\n    at anonymous (address at index.android.bundle:1:1433597)\n    at ScreenStackItem (address at index.android.bundle:1:1443781)\n    at NavigationProvider (address at index.android.bundle:1:1259102)\n    at SceneView (address at index.android.bundle:1:1467172)\n    at RNSScreenStack (<anonymous>)\n    at anonymous (address at index.android.bundle:1:1442860)\n    at ScreenStack (address at index.android.bundle:1:1442050)\n    at RCTView (<anonymous>)\n    at View (address at index.android.bundle:1:475847)\n    at FrameSizeProvider (address at index.android.bundle:1:1356441)\n    at SafeAreaProviderCompat (address at index.android.bundle:1:1367895)\n    at NativeStackView (address at index.android.bundle:1:1465733)\n    at PreventRemoveProvider (address at index.android.bundle:1:1283444)\n    at NavigationStateListenerProvider (address at index.android.bundle:1:1306057)\n    at NavigationContent (address at index.android.bundle:1:1295629)\n    at anonymous (address at index.android.bundle:1:1295532)\n    at Nativ
+05-07 16:03:51.544  8845  8865 E ReactNativeJS:   isComponentError: true }
+05-07 16:03:52.269  8845  8864 E unknown:SurfaceMountingManager: Stopping surface [1]
+05-07 16:03:52.281  8845  8845 E unknown:ReactNative: Tried to remove non-existent frame callback
+05-07 16:03:52.282  8845  8845 E unknown:SurfaceMountingManager: Surface [1] was stopped on SurfaceMountingManager.
+05-07 16:03:55.274   610  3059 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
