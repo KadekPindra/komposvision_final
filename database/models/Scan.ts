@@ -1,5 +1,5 @@
 import { Model } from "@nozbe/watermelondb";
-import { field, json, relation, readonly, date } from "@nozbe/watermelondb/decorators";
+import { field, json, relation, date } from "@nozbe/watermelondb/decorators";
 
 const sanitizeArray = (value: unknown) => (Array.isArray(value) ? value : []);
 
@@ -13,7 +13,7 @@ export class Scan extends Model {
   @json("nitrogen_items", sanitizeArray) nitrogenItems!: string[];
   @field("estimated_ratio") estimatedRatio!: string;
   @field("ai_instruction") aiInstruction!: string;
-  @readonly @date("created_at") createdAt!: number;
+  @date("created_at") createdAt!: number;
 
   @relation("compost_batches", "batch_id") batch!: any;
 }

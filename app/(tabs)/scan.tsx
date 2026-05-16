@@ -330,6 +330,8 @@ export default function ScanScreen() {
               },
             ],
             contaminants: [],
+            aiInstruction:
+              "Rasio karbon terlalu tinggi, tambahkan bahan hijau seperti sisa sayur atau rumput.",
           }),
         },
       });

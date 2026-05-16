@@ -1,5 +1,5 @@
 import { Model } from "@nozbe/watermelondb";
-import { field, relation, readonly, date } from "@nozbe/watermelondb/decorators";
+import { field, relation, date } from "@nozbe/watermelondb/decorators";
 
 export class CompostActivity extends Model {
   static table = "compost_activities";
@@ -9,7 +9,7 @@ export class CompostActivity extends Model {
   @field("description") description!: string;
   @field("is_active") isActive!: boolean;
   @field("time_label") timeLabel!: string;
-  @readonly @date("created_at") createdAt!: number;
+  @date("created_at") createdAt!: number;
 
   @relation("compost_batches", "batch_id") batch!: any;
 }

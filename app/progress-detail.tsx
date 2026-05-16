@@ -327,7 +327,7 @@ const DetailProgressScreen = () => {
           record.description = update.activity.description;
           record.isActive = true;
           record.timeLabel = update.activity.time;
-          record._raw.created_at = Date.now();
+          record.createdAt = Date.now();
         });
       });
 
@@ -405,7 +405,7 @@ const DetailProgressScreen = () => {
           record.description = activityDesc;
           record.isActive = true;
           record.timeLabel = "Baru saja";
-          record._raw.created_at = Date.now();
+          record.createdAt = Date.now();
         });
       });
 

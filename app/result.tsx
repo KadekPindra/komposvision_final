@@ -427,7 +427,7 @@ export default function ResultScreen() {
                       .create((record: any) => {
                         record.fullName = "Pengguna Offline";
                         record.totalCompostKg = 0;
-                        record.createdAt = new Date().toISOString();
+                        record.createdAt = Date.now();
                       });
                     profileId = profile.id;
                   }
@@ -437,7 +437,7 @@ export default function ResultScreen() {
                     .create((record: any) => {
                       record.userId = profileId;
                       record.title = allItems[0] ?? "Hasil Scan";
-                      record.status = "Tersimpan";
+                      record.status = "Aktif";
                       record.imageUri = result.imageUri;
                       record.ratio = result.estimatedRatio || "-";
                       record.progress = 10;
@@ -459,8 +459,8 @@ export default function ResultScreen() {
                     record.carbonItems = result.carbonItems;
                     record.nitrogenItems = result.nitrogenItems;
                     record.estimatedRatio = result.estimatedRatio;
-                    record.aiInstruction = result.aiInstruction;
-                    record.createdAt = new Date().toISOString();
+                    record.aiInstruction = result.aiInstruction ?? "";
+                    record.createdAt = Date.now();
                   });
 
                   await database
@@ -472,11 +472,17 @@ export default function ResultScreen() {
                         "Hasil analisis ditambahkan dari halaman result.";
                       record.isActive = true;
                       record.timeLabel = new Date().toLocaleString("id-ID");
-                      record.createdAt = new Date().toISOString();
+                      record.createdAt = Date.now();
                     });
                 });
 
-                Alert.alert("Berhasil", "Progress berhasil disimpan.");
+                Alert.alert("Berhasil", "Progress berhasil disimpan.", [
+                  {
+                    text: "Lihat Progress",
+                    onPress: () => router.replace("/(tabs)/progress"),
+                  },
+                  { text: "OK", style: "cancel" },
+                ]);
               } catch (error) {
                 const message =
                   error instanceof Error ? error.message : "Terjadi kesalahan";
