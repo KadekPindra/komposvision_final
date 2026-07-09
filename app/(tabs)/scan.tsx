@@ -1,5 +1,4 @@
-import { Entypo, Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -23,7 +22,6 @@ import {
 import { useResizer } from "react-native-vision-camera-resizer";
 import { createSynchronizable, runOnJS } from "react-native-worklets";
 
-import { detectBlurFromImage } from "@/services/blurDetection";
 import { LiveDetection, WASTE_CLASSES } from "@/services/liveWasteDetection";
 const MODEL_NUM_CLASSES = WASTE_CLASSES.length;
 
@@ -294,44 +292,42 @@ export default function ScanScreen() {
   const processImage = async (localUri: string) => {
     setLoading(true);
     try {
-      const blurResult = await detectBlurFromImage(localUri);
-      if (blurResult.isBlurry) {
-        Alert.alert("Gambar terlalu buram", "Silakan ambil foto ulang.");
-        return;
-      }
-
-      // DEMO: hardcoded result for the "kardus + kulit pisang + daun kering"
-      // scenario. Bypasses TFLite inference until the segmentation model is
-      // wired up. Composition percent is item-count based (matches
-      // analyzeComposition fallback): 2 carbon items + 1 nitrogen item → 67/33.
-      const demoCarbonItems = ["Kardus", "Daun Kering"];
-      const demoNitrogenItems = ["Daun Hijau"];
+      // Snapshot the live detections produced by the on-device YOLO model at
+      // capture time — the same real organic/inorganic results shown as chips
+      // over the camera feed. No values are fabricated.
+      const snapshot = detections;
+      const formatDetection = (d: LiveDetection) =>
+        `${d.className} ${Math.round(d.confidence * 100)}%`;
+      const organicItems = snapshot
+        .filter((d) => d.type === "organic")
+        .map(formatDetection);
+      const inorganicItems = snapshot
+        .filter((d) => d.type === "inorganic")
+        .map(formatDetection);
+      const organicCount = organicItems.length;
+      const inorganicCount = inorganicItems.length;
+      const total = snapshot.length;
+      const organicPercent =
+        total > 0 ? Math.round((organicCount / total) * 100) : 0;
+      const inorganicPercent = total > 0 ? 100 - organicPercent : 0;
+      // Grouped organic-then-inorganic for display and for the local DB
+      // (services/activeBatch.ts splits this back using organicCount).
+      const detectedItems = [...organicItems, ...inorganicItems];
 
       router.push({
         pathname: "/result",
         params: {
           data: JSON.stringify({
             imageUri: localUri,
-            carbonItems: demoCarbonItems,
-            nitrogenItems: demoNitrogenItems,
-            estimatedRatio: "45:1",
-            composition: [
-              {
-                label: "Bahan Hijau (Nitrogen)",
-                detail: demoNitrogenItems.join(", "),
-                percent: 33,
-                tone: "green",
-              },
-              {
-                label: "Bahan Coklat (Karbon)",
-                detail: demoCarbonItems.join(", "),
-                percent: 67,
-                tone: "brown",
-              },
-            ],
-            contaminants: [],
-            aiInstruction:
-              "Rasio karbon terlalu tinggi, tambahkan bahan hijau seperti sisa sayur atau rumput.",
+            detectedItems,
+            organicCount,
+            inorganicCount,
+            organicPercent,
+            inorganicPercent,
+            summary:
+              total > 0
+                ? `Terdeteksi ${organicCount} objek organik dan ${inorganicCount} objek anorganik.`
+                : "Tidak ada objek terdeteksi. Arahkan kamera ke sampah lalu ambil foto lagi.",
           }),
         },
       });
@@ -360,20 +356,6 @@ export default function ScanScreen() {
         "Error",
         error instanceof Error ? error.message : "Gagal mengambil foto",
       );
-    }
-  };
-
-  const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      await processImage(result.assets[0].uri);
     }
   };
 
@@ -468,15 +450,7 @@ export default function ScanScreen() {
           {/* Bottom controls */}
           <View style={styles.bottomSection}>
             <View style={styles.bottomRow}>
-              <View style={styles.sideSlot}>
-                <TouchableOpacity
-                  onPress={pickImage}
-                  disabled={loading}
-                  style={[styles.iconBtn, loading && styles.disabled]}
-                >
-                  <Entypo name="images" size={24} color="white" />
-                </TouchableOpacity>
-              </View>
+              <View style={styles.sideSlot} />
 
               <TouchableOpacity
                 onPress={takePhoto}

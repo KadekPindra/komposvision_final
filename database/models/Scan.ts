@@ -14,6 +14,8 @@ export class Scan extends Model {
   @field("estimated_ratio") estimatedRatio!: string;
   @field("ai_instruction") aiInstruction!: string;
   @date("created_at") createdAt!: number;
+  @field("remote_id") remoteId?: string;
+  @field("synced_at") syncedAt?: number;
 
   @relation("compost_batches", "batch_id") batch!: any;
 }

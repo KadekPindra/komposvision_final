@@ -10,6 +10,8 @@ export class CompostActivity extends Model {
   @field("is_active") isActive!: boolean;
   @field("time_label") timeLabel!: string;
   @date("created_at") createdAt!: number;
+  @field("remote_id") remoteId?: string;
+  @field("synced_at") syncedAt?: number;
 
   @relation("compost_batches", "batch_id") batch!: any;
 }

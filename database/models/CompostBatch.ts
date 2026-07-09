@@ -29,6 +29,8 @@ export class CompostBatch extends Model {
     tone: "green" | "brown";
   }>;
   @field("last_updated_formatted") lastUpdatedFormatted!: string;
+  @field("remote_id") remoteId?: string;
+  @field("synced_at") syncedAt?: number;
 
   @children("compost_activities") activities!: any;
   @relation("profiles", "user_id") profile!: any;

@@ -1,11 +1,10 @@
 import CompositionText from "@/components/composition";
 import PageHeader from "@/components/PageHeader";
 import ScreenWrapper from "@/components/ScreenWrapper";
-import { database } from "@/database";
-import { generateCompostAdvice } from "@/utils/compostAdvisor";
+import { appendScanToBatch, getOrCreateActiveBatch } from "@/services/activeBatch";
+import { syncNow } from "@/services/syncService";
 import {
   AntDesign,
-  Entypo,
   FontAwesome,
   Ionicons,
   MaterialCommunityIcons,
@@ -27,22 +26,12 @@ import {
 
 type AnalyzeResult = {
   imageUri: string;
-  carbonItems: string[];
-  nitrogenItems: string[];
-  estimatedRatio: string;
-  composition: {
-    label: string;
-    detail: string;
-    percent: number;
-    tone: "green" | "brown";
-  }[];
-  contaminants: {
-    classId: number;
-    className: string;
-    confidence: number;
-    bbox: [number, number, number, number];
-  }[];
-  aiInstruction: string;
+  detectedItems: string[];
+  organicCount: number;
+  inorganicCount: number;
+  organicPercent: number;
+  inorganicPercent: number;
+  summary: string;
 };
 
 export default function ResultScreen() {
@@ -106,31 +95,33 @@ export default function ResultScreen() {
   }
 
   const imageUrl = result.imageUri;
-  const carbonEntry = result.composition.find((item) => item.tone === "brown");
-  const nitrogenEntry = result.composition.find(
-    (item) => item.tone === "green",
-  );
-  const carbonValue = carbonEntry?.percent ?? 50;
-  const nitrogenValue = nitrogenEntry?.percent ?? 50;
-  const ratioParsed = Number(result.estimatedRatio.split(":")[0]);
-  const ratioValue = Number.isFinite(ratioParsed) ? ratioParsed : 0;
-  const isBalanced = ratioValue >= 20 && ratioValue <= 30;
-  const message = isBalanced ? "Komposisi seimbang" : result.aiInstruction;
-  const allItems = [...result.carbonItems, ...result.nitrogenItems];
-  const advice = generateCompostAdvice({
-    ratio: result.estimatedRatio || "25:1",
-    carbonPercent: carbonValue,
-    nitrogenPercent: nitrogenValue,
-    batchAgeDays: 3,
-    temperatureC: 35,
-    moisture: "Sedang",
-  });
-  const suggestions = isBalanced
-    ? ["Pertahankan rasio saat ini"]
-    : ratioValue > 30
-      ? ["Tambah bahan hijau (sayur, rumput)"]
-      : ["Tambah bahan coklat (daun kering, kardus)"];
-  const estimatedYieldKg = Math.max(1, Math.round(allItems.length / 2));
+  const organicValue = result.organicPercent;
+  const inorganicValue = result.inorganicPercent;
+  const totalDetected = result.organicCount + result.inorganicCount;
+  const hasInorganic = result.inorganicCount > 0;
+  const allItems = result.detectedItems;
+  const guidance = hasInorganic
+    ? {
+        headline: "Pisahkan objek anorganik sebelum dikomposkan.",
+        actions: [
+          "Keluarkan plastik, logam, atau kaca dari tumpukan.",
+          "Komposkan hanya bahan organik yang tersisa.",
+        ],
+      }
+    : totalDetected > 0
+      ? {
+          headline: "Semua objek terdeteksi organik — siap dikomposkan.",
+          actions: [
+            "Cacah bahan agar lebih cepat terurai.",
+            "Jaga kelembapan dan lakukan aerasi berkala.",
+          ],
+        }
+      : {
+          headline: "Belum ada objek terdeteksi.",
+          actions: [
+            "Arahkan kamera lebih dekat ke sampah lalu ambil foto lagi.",
+          ],
+        };
 
   const getItemIcon = (itemName: string) => {
     const name = itemName.toLowerCase();
@@ -169,14 +160,14 @@ export default function ResultScreen() {
         {/* Tab Detail Item */}
         <View className="flex bg-white px-6 py-8 mb-8 rounded-xl shadow-md shadow-gray-200">
           <Text className="text-2xl text-start font-semibold">
-            Daftar Bahan
+            Objek Terdeteksi
           </Text>
           <View className="mt-4 gap-2">
             {allItems.length === 0 && (
               <View className="flex-row items-center gap-3 border border-gray-200 rounded-lg px-4 py-3">
                 <MaterialCommunityIcons name="leaf" size={18} color="#166534" />
                 <Text className="font-semibold flex-1">
-                  Belum ada bahan terdeteksi
+                  Belum ada objek terdeteksi
                 </Text>
               </View>
             )}
@@ -223,54 +214,55 @@ export default function ResultScreen() {
           </View>
         </View>
 
-        {/* Tab Rasio Karbon vs Nitrogen */}
+        {/* Tab Komposisi Organik vs Anorganik */}
         <View className="flex bg-white px-6 py-8 rounded-xl shadow-md shadow-gray-200">
           <Text className="text-2xl text-center font-semibold">
-            Rasio Karbon vs Nitrogen
+            Komposisi Organik vs Anorganik
           </Text>
-          <CompositionText carbon={carbonValue} nitrogen={nitrogenValue} />
+          <CompositionText
+            carbon={organicValue}
+            nitrogen={inorganicValue}
+            leftLabel="ORGANIK"
+            rightLabel="ANORGANIK"
+          />
           <View className="items-center justify-center">
             <View
               className={`px-4 py-3 rounded-full flex-row items-center justify-center ${
-                isBalanced ? "bg-green-100" : "bg-red-100"
+                hasInorganic ? "bg-red-100" : "bg-green-100"
               }`}
             >
               <Ionicons
                 name={
-                  isBalanced ? "checkmark-circle-outline" : "warning-outline"
+                  hasInorganic ? "warning-outline" : "checkmark-circle-outline"
                 }
                 size={18}
-                color={isBalanced ? "#166534" : "#991b1b"}
+                color={hasInorganic ? "#991b1b" : "#166534"}
               />
-              {/* <Text
+              <Text
                 className={`font-semibold ml-2 ${
-                  isBalanced ? "text-green-800" : "text-red-800"
+                  hasInorganic ? "text-red-800" : "text-green-800"
                 }`}
               >
-                {message}
-              </Text> */}
+                {totalDetected > 0
+                  ? hasInorganic
+                    ? "Ada objek anorganik"
+                    : "Semua organik"
+                  : "Belum ada deteksi"}
+              </Text>
             </View>
           </View>
           <View className="border-t border-gray-400 w-full flex my-8" />
           <View className="flex-row items-center justify-center gap-6">
             <View className="flex-row items-center justify-center gap-2">
-              <FontAwesome
-                name="circle"
-                size={16}
-                color={isBalanced ? "#166534" : "#991b1b"}
-              />
+              <FontAwesome name="circle" size={16} color="#166534" />
               <Text className="text-center text-gray-500">
-                Karbon(C) {carbonValue}%
+                Organik {organicValue}%
               </Text>
             </View>
             <View className="flex-row items-center justify-center gap-2">
-              <FontAwesome
-                name="circle"
-                size={16}
-                color={isBalanced ? "#166534" : "#991b1b"}
-              />
+              <FontAwesome name="circle" size={16} color="#991b1b" />
               <Text className="text-center text-gray-500">
-                Nitrogen(N) {nitrogenValue}%
+                Anorganik {inorganicValue}%
               </Text>
             </View>
           </View>
@@ -319,10 +311,10 @@ export default function ResultScreen() {
           {isAdviceExpanded && (
             <View className="mt-4">
               <Text className="text-gray-600 font-semibold mb-3">
-                {advice.nextAction}
+                {guidance.headline}
               </Text>
               <View className="gap-2">
-                {suggestions.map((item, index) => (
+                {guidance.actions.map((item, index) => (
                   <View
                     key={`${item}-${index}`}
                     className="flex-row items-center gap-4 px-4 py-2 bg-white rounded-xl border border-gray-300"
@@ -338,34 +330,7 @@ export default function ResultScreen() {
           )}
         </View>
 
-        {/* Tab Estimasi Panen */}
-        <View className="flex bg-white px-6 py-8 rounded-xl mt-8 shadow-md shadow-gray-200">
-          <Text className="text-2xl text-start font-semibold">
-            Estimasi Panen
-          </Text>
-          <View className="flex-row gap-4 mt-4">
-            <View className="flex-1 items-center justify-center border border-gray-200 rounded-lg px-4 py-3">
-              <MaterialIcons name="scale" size={24} color="#6b5b47" />
-              <Text className="font-semibold mt-1 text-gray-600">
-                Prediksi Berat
-              </Text>
-              <Text className="mt-2 font-bold text-2xl">
-                ~ {estimatedYieldKg}kg
-              </Text>
-            </View>
-            <View className="flex-1 items-center justify-center border border-gray-200 rounded-lg px-4 py-3">
-              <Entypo name="calendar" size={24} color="#166534" />
-              <Text className="font-semibold mt-1 text-gray-600">
-                Waktu Matang
-              </Text>
-              <Text className="mt-2 font-bold text-2xl">
-                ~ {advice.etaDays} hari
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View className="flex bg-white px-6 py-8 rounded-xl my-8 shadow-md shadow-gray-200">
+        <View className="flex bg-white px-6 py-8 rounded-xl my-8 mt-8 shadow-md shadow-gray-200">
           <Text className="text-2xl text-start font-semibold">
             Panduan Bahan
           </Text>
@@ -415,66 +380,23 @@ export default function ResultScreen() {
             onPress={async () => {
               setSaving(true);
               try {
-                await database.write(async () => {
-                  const profiles = await database
-                    .get("profiles")
-                    .query()
-                    .fetch();
-                  let profileId = profiles[0]?.id;
-                  if (!profileId) {
-                    const profile = await database
-                      .get("profiles")
-                      .create((record: any) => {
-                        record.fullName = "Pengguna Offline";
-                        record.totalCompostKg = 0;
-                        record.createdAt = Date.now();
-                      });
-                    profileId = profile.id;
-                  }
-
-                  const batch = await database
-                    .get("compost_batches")
-                    .create((record: any) => {
-                      record.userId = profileId;
-                      record.title = allItems[0] ?? "Hasil Scan";
-                      record.status = "Aktif";
-                      record.imageUri = result.imageUri;
-                      record.ratio = result.estimatedRatio || "-";
-                      record.progress = 10;
-                      record.summary = advice.summary;
-                      record.temperatureC = 35;
-                      record.moisture = "Sedang";
-                      record.nextAction = advice.nextAction;
-                      record.etaDays = advice.etaDays;
-                      record.composition = result.composition;
-                      record.lastUpdatedFormatted = new Date().toLocaleString(
-                        "id-ID",
-                      );
-                    });
-
-                  await database.get("scans").create((record: any) => {
-                    record.userId = profileId;
-                    record.batchId = batch.id;
-                    record.imageUri = result.imageUri;
-                    record.carbonItems = result.carbonItems;
-                    record.nitrogenItems = result.nitrogenItems;
-                    record.estimatedRatio = result.estimatedRatio;
-                    record.aiInstruction = result.aiInstruction ?? "";
-                    record.createdAt = Date.now();
-                  });
-
-                  await database
-                    .get("compost_activities")
-                    .create((record: any) => {
-                      record.batchId = batch.id;
-                      record.title = "Hasil scan disimpan";
-                      record.description =
-                        "Hasil analisis ditambahkan dari halaman result.";
-                      record.isActive = true;
-                      record.timeLabel = new Date().toLocaleString("id-ID");
-                      record.createdAt = Date.now();
-                    });
+                // Append this scan to the device's active batch instead of
+                // minting a new batch per scan — keeps one ongoing process
+                // per device, matching the multi-device sync model.
+                const batch = await getOrCreateActiveBatch();
+                await appendScanToBatch(batch, {
+                  imageUri: result.imageUri,
+                  organicCount: result.organicCount,
+                  inorganicCount: result.inorganicCount,
+                  organicPercent: organicValue,
+                  inorganicPercent: inorganicValue,
+                  detectedItems: allItems,
+                  summary: guidance.headline,
+                  aiInstruction: result.summary ?? "",
                 });
+
+                // Push to backend now; resilient to being offline (no-op).
+                syncNow().catch(() => {});
 
                 Alert.alert("Berhasil", "Progress berhasil disimpan.", [
                   {

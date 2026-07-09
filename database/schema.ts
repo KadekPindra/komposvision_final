@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb";
 
 export const schema = appSchema({
-  version: 1,
+  version: 2,
   tables: [
     tableSchema({
       name: "profiles",
@@ -27,6 +27,8 @@ export const schema = appSchema({
         { name: "eta_days", type: "number" },
         { name: "composition", type: "string" },
         { name: "last_updated_formatted", type: "string" },
+        { name: "remote_id", type: "string", isOptional: true },
+        { name: "synced_at", type: "number", isOptional: true },
       ],
     }),
     tableSchema({
@@ -38,6 +40,8 @@ export const schema = appSchema({
         { name: "is_active", type: "boolean" },
         { name: "time_label", type: "string" },
         { name: "created_at", type: "number" },
+        { name: "remote_id", type: "string", isOptional: true },
+        { name: "synced_at", type: "number", isOptional: true },
       ],
     }),
     tableSchema({
@@ -51,6 +55,8 @@ export const schema = appSchema({
         { name: "estimated_ratio", type: "string" },
         { name: "ai_instruction", type: "string" },
         { name: "created_at", type: "number" },
+        { name: "remote_id", type: "string", isOptional: true },
+        { name: "synced_at", type: "number", isOptional: true },
       ],
     }),
     tableSchema({

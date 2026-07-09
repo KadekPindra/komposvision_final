@@ -3,11 +3,15 @@ import { Text, View } from "react-native";
 type CompositionTextProps = {
   carbon: number;
   nitrogen: number;
+  leftLabel?: string;
+  rightLabel?: string;
 };
 
 export default function CompositionText({
   carbon,
   nitrogen,
+  leftLabel = "KARBON",
+  rightLabel = "NITROGEN",
 }: CompositionTextProps) {
   const carbonClass = carbon > nitrogen ? "text-red-600" : "text-green-600";
   const nitrogenClass = nitrogen > carbon ? "text-red-600" : "text-green-600";
@@ -19,7 +23,7 @@ export default function CompositionText({
           <Text className="text-5xl">{carbon}</Text> %
         </Text>
         <Text className={`text-center font-semibold -mt-2 text-xs ${carbonClass}`}>
-          KARBON
+          {leftLabel}
         </Text>
       </View>
       <View className="flex flex-col">
@@ -27,7 +31,7 @@ export default function CompositionText({
           <Text className="text-5xl">{nitrogen}</Text> %
         </Text>
         <Text className={`text-center font-semibold -mt-2 text-xs ${nitrogenClass}`}>
-          NITROGEN
+          {rightLabel}
         </Text>
       </View>
     </View>
